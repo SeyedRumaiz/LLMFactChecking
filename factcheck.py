@@ -5,6 +5,11 @@ from typing import List
 import numpy as np
 import spacy
 import gc
+import re
+from collections import Counter
+from math import log
+from nltk.stem import PorterStemmer
+from spacy.lang.en.stop_words import STOP_WORDS
 
 
 class FactExample(object):
@@ -82,8 +87,49 @@ class AlwaysEntailedFactChecker(FactChecker):
 
 
 class WordRecallThresholdFactChecker(FactChecker):
+    """
+    IDF-weighted word recall at passage level.
+    score = sum(idf of fact terms found in a passage) / sum(idf of all fact terms),
+    max over passages. Predict S if score >= threshold (tuned on dev: 0.605 -> 81.9%).
+    """
+
+    NEGATION_WORDS = {"no", "not", "nor", "never", "none", "n't"}
+
+    def __init__(self, threshold: float = 0.605):
+        self.threshold = threshold
+        self.stemmer = PorterStemmer()
+        # Keep negations: removing them would make contradictory evidence look similar.
+        self.stopwords = set(STOP_WORDS) - self.NEGATION_WORDS
+
+    def tokenize(self, text: str) -> List[str]:
+        text = text.lower()
+        text = re.sub(r"<[^>]+>", " ", text)    # strip <s> tags
+        text = re.sub(r"[^a-z0-9\s]", " ", text)    # keep letters and digits (years)
+        return [self.stemmer.stem(t) for t in text.split() if t not in self.stopwords]
+
+    def score(self, fact: str, passages: List[dict]) -> float:
+        fact_terms = set(self.tokenize(fact))
+        if not fact_terms:
+            return 0.0
+
+        passage_term_sets = [set(self.tokenize(p.get("text", "") or "")) for p in passages]
+        passage_term_sets = [s for s in passage_term_sets if s]
+        if not passage_term_sets:
+            return 0.0
+
+        # Smoothed IDF over [fact] + this fact's passages.
+        documents = [fact_terms] + passage_term_sets
+        df = Counter()
+        for doc in documents:
+            df.update(doc)
+        n = len(documents)
+        idf = {t: log((n + 1) / (c + 1)) + 1.0 for t, c in df.items()}
+
+        total = sum(idf[t] for t in fact_terms)
+        return max(sum(idf[t] for t in fact_terms & s) / total for s in passage_term_sets)
+
     def predict(self, fact: str, passages: List[dict]) -> str:
-        raise Exception("Implement me")
+        return "S" if self.score(fact, passages) >= self.threshold else "NS"
 
 
 class EntailmentFactChecker(FactChecker):
