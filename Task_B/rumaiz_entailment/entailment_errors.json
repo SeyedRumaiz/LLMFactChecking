@@ -1,0 +1,422 @@
+[
+  {
+    "type": "FP",
+    "fact": "Cleveland is in Ohio.",
+    "gold_label": "IR",
+    "predicted": "S",
+    "score": 0.9931,
+    "pruned": false,
+    "best_premise": "He was also a nominee for the Large Market Personality of the Year Marconi Award in 2010. Trivisonno was born in East Cleveland, Ohio, and attended Mayfield High School in",
+    "probs_E_N_C": [
+      0.9931,
+      0.0062,
+      0.0007
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "Gerhard Fischer is best known for inventing a metal detector.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.0109,
+    "pruned": false,
+    "best_premise": "Fisher shared the idea with Albert Einstein who correctly predicted the proliferation of hand held metal detector use. In 1937, he patented his metal detector.",
+    "probs_E_N_C": [
+      0.0109,
+      0.9885,
+      0.0007
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "Gerhard Fischer invented the first handheld, battery-operated metal detector.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.0045,
+    "pruned": false,
+    "best_premise": "the hand-held metal detector is disputed, the hand-held metal detector was made in 1925 and was first patented by Dr. Gerhard Fisher in 1931.",
+    "probs_E_N_C": [
+      0.0045,
+      0.9925,
+      0.003
+    ]
+  },
+  {
+    "type": "FP",
+    "fact": "She transitioned to acting.",
+    "gold_label": "NS",
+    "predicted": "S",
+    "score": 0.8121,
+    "pruned": false,
+    "best_premise": "Virginia Valli Virginia Valli (died September 24, 1968) was an American stage and film actress whose motion picture career started in the silent film era and lasted until the beginning of the sound film era of the 1930s.",
+    "probs_E_N_C": [
+      0.8121,
+      0.16,
+      0.0279
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "Jean Daullé was known for his portraits.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.0761,
+    "pruned": false,
+    "best_premise": "He engraved several portraits and plates of historical and other subjects, which are chiefly executed with the graver in a clear and firm style, which entitles him to rank with the ablest artists of his time. He marked his works J.",
+    "probs_E_N_C": [
+      0.0761,
+      0.9198,
+      0.0041
+    ]
+  },
+  {
+    "type": "FP",
+    "fact": "Itakura has represented Japan at the Under-19-level.",
+    "gold_label": "NS",
+    "predicted": "S",
+    "score": 0.5125,
+    "pruned": false,
+    "best_premise": "In May 2017, Itakura was called up to the Japan U-20 national team for the 2017 U-20 World Cup. At this tournament, he played 2 matches as defensive midfielder.",
+    "probs_E_N_C": [
+      0.5125,
+      0.4509,
+      0.0365
+    ]
+  },
+  {
+    "type": "FP",
+    "fact": "Trivisonno worked at WMMS.",
+    "gold_label": "NS",
+    "predicted": "S",
+    "score": 0.965,
+    "pruned": false,
+    "best_premise": "He was a frequent caller on the \"Sportsline\" radio show on WTAM AM 1100 (during this period the station was operating under the WWWE call letters). The show was hosted by the acerbic Pete Franklin and dealt with Cleveland sports.",
+    "probs_E_N_C": [
+      0.965,
+      0.0083,
+      0.0268
+    ]
+  },
+  {
+    "type": "FP",
+    "fact": "Trivisonno worked at WKNR.",
+    "gold_label": "NS",
+    "predicted": "S",
+    "score": 0.9929,
+    "pruned": false,
+    "best_premise": "in the ratings, even though it was usually up against Cleveland Indians games on WKNR. It did so well, the decision was made to put Trivisonno in afternoon drive-time (under the \"Sportsline\" banner until 1998; under his own name since) ultimately leaving \"Sportsline\" to other hosts.",
+    "probs_E_N_C": [
+      0.9929,
+      0.0034,
+      0.0037
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "The Taker trilogy is a novel by Katsu.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.0495,
+    "pruned": false,
+    "best_premise": "She lives in the Washington, DC area with her husband, musician Bruce Katsu. - \"The Taker\", Gallery Books, 2011 () - \"The Reckoning\", Gallery Books, 2012 () - \"The Descent\", Gallery Books, 2014 ()",
+    "probs_E_N_C": [
+      0.0495,
+      0.9225,
+      0.028
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "The Hunger is a novel by Katsu.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.0055,
+    "pruned": false,
+    "best_premise": "Her books have been translated into over a dozen languages, and has been published in the United Kingdom, Brazil, Spain and Italy. Katsu has also had a 29-year career in the US federal government working in a number of positions dealing with intelligence and foreign policy, with an emphasis on technology issues.",
+    "probs_E_N_C": [
+      0.0055,
+      0.9941,
+      0.0004
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "The Deep is a novel by Katsu.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.0105,
+    "pruned": false,
+    "best_premise": "She spent the majority of her youth living near Concord, Massachusetts, to which she attributes her interest in the early American history featured in her novels. She attended Brandeis University (BA in literature and writing, 1981) where she studied with novelist John Irving and children's book author Margaret Rey, and the Johns Hopkins University (MA in Fiction, 2004).",
+    "probs_E_N_C": [
+      0.0105,
+      0.9833,
+      0.0061
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "Red Widow is a novel by Katsu.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.0089,
+    "pruned": false,
+    "best_premise": "as \"Booklist\" and \"The Washington Post\" and was recognized as one of the ten best debut novels of the year by the American Library Association. Described as a literary take on the Faustian bargain, \"The Taker Trilogy\" tells the story of a young woman who has been given eternal life but comes to see this condition as a punishment for evil acts she perpetrated in life and is now condemned to revisit until the end of time.",
+    "probs_E_N_C": [
+      0.0089,
+      0.9365,
+      0.0546
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "He served for many years as a pastor.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.0236,
+    "pruned": false,
+    "best_premise": "31 July 2011. Views on Israel.",
+    "probs_E_N_C": [
+      0.0236,
+      0.9705,
+      0.0059
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "Hibo Wardere is based in the United Kingdom.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.0,
+    "pruned": true,
+    "best_premise": "Born in Somalia, she moved to London, England when just a teenager in 1989, as a refugee fleeing the Somali Civil War. She currently resides in Walthamstow, London, where she worked as a mediator and a regular FGM educator for Waltham Forest Borough.",
+    "probs_E_N_C": [
+      0.9986,
+      0.0008,
+      0.0006
+    ]
+  },
+  {
+    "type": "FP",
+    "fact": "She has worked with a number of organizations.",
+    "gold_label": "NS",
+    "predicted": "S",
+    "score": 0.9243,
+    "pruned": false,
+    "best_premise": "She also delivers awareness raising sessions to doctors and the Police to assist in their understanding of FGM. Her testimonies have appeared in numerous publications, including the BBC, the \"Guardian\" and the \"Telegraph\".",
+    "probs_E_N_C": [
+      0.9243,
+      0.0746,
+      0.001
+    ]
+  },
+  {
+    "type": "FP",
+    "fact": "He has worked as a researcher at various organizations.",
+    "gold_label": "NS",
+    "predicted": "S",
+    "score": 0.9384,
+    "pruned": false,
+    "best_premise": "In addition, he directed the BYU Biomedical Imaging Lab, and performed research on scanning impedance imaging. Oliphant served as President of Enthought from 2007 until 2011.",
+    "probs_E_N_C": [
+      0.9384,
+      0.0598,
+      0.0018
+    ]
+  },
+  {
+    "type": "FP",
+    "fact": "He has worked as a scientist at various organizations.",
+    "gold_label": "NS",
+    "predicted": "S",
+    "score": 0.8449,
+    "pruned": false,
+    "best_premise": "In addition, he directed the BYU Biomedical Imaging Lab, and performed research on scanning impedance imaging. Oliphant served as President of Enthought from 2007 until 2011.",
+    "probs_E_N_C": [
+      0.8449,
+      0.1525,
+      0.0026
+    ]
+  },
+  {
+    "type": "FP",
+    "fact": "Mayo Clinic is an organization.",
+    "gold_label": "NS",
+    "predicted": "S",
+    "score": 0.8879,
+    "pruned": false,
+    "best_premise": "in Biomedical Engineering from the Mayo Clinic and B.S. degrees in Mathematics and Electrical Engineering from Brigham Young University.",
+    "probs_E_N_C": [
+      0.8879,
+      0.1078,
+      0.0043
+    ]
+  },
+  {
+    "type": "FP",
+    "fact": "He has worked at Mayo Clinic.",
+    "gold_label": "NS",
+    "predicted": "S",
+    "score": 0.7088,
+    "pruned": false,
+    "best_premise": "in Biomedical Engineering from the Mayo Clinic and B.S. degrees in Mathematics and Electrical Engineering from Brigham Young University.",
+    "probs_E_N_C": [
+      0.7088,
+      0.2881,
+      0.0031
+    ]
+  },
+  {
+    "type": "FP",
+    "fact": "He served as a sniper.",
+    "gold_label": "NS",
+    "predicted": "S",
+    "score": 0.9988,
+    "pruned": false,
+    "best_premise": "Rob Furlong Rob Furlong (born 11 November 1976) is a Canadian former military sniper who, from March 2002 until November 2009, held the world record for the longest confirmed sniper kill in combat, at. His record stood for over 7 years and was improved upon by Craig Harrison with a distance of using a L115A3 Long Range Rifle.",
+    "probs_E_N_C": [
+      0.9988,
+      0.0009,
+      0.0003
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "She was born on July 18, 1987.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.0007,
+    "pruned": false,
+    "best_premise": "She represented Venezuela in the 2011 Miss International pageant in Chengdu, China in November 6, 2011. During the Miss International 2011 final, Jessica Bar",
+    "probs_E_N_C": [
+      0.0007,
+      0.9979,
+      0.0014
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "With CSKA, he won domestic titles.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.035,
+    "pruned": false,
+    "best_premise": "ation and the minimum fee release clause.",
+    "probs_E_N_C": [
+      0.035,
+      0.9138,
+      0.0512
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "Florencia Bertotti is an Argentinian.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.0,
+    "pruned": true,
+    "best_premise": "Florencia Bertotti María Florencia Bertotti (born 15 March 1983), better known as Florencia Bertotti is an Argentine actress, singer, songwriter and businesswoman. Florencia Bertotti parents are Gustavo Bertotti, a jeweler and María Candelaria Pérez Colman, a psychologist and a teacher of children with disabilities.",
+    "probs_E_N_C": [
+      0.993,
+      0.0035,
+      0.0035
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "Jonathan Haagensen was born in Rio de Janeiro.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.0056,
+    "pruned": false,
+    "best_premise": "Life and career. A resident of the Vidigal community since his birth, he has Norwegian ancestry from his father, who has not seen since he was six years old.",
+    "probs_E_N_C": [
+      0.0056,
+      0.2497,
+      0.7447
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "Haagensen later transitioned to television.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.0,
+    "pruned": true,
+    "best_premise": "He has participated, as a model, in the Fashion Rio event, campaigning for Dolce & Gabbana and worked in promotional events for the NBA. He participated in the reality show \"A Fazenda\", from TV Record.",
+    "probs_E_N_C": [
+      0.0139,
+      0.2355,
+      0.7506
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "They divorced in 1964.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.0,
+    "pruned": true,
+    "best_premise": "Her first marriage, at age sixteen, was to Ardeshir Zahedi on 11 October 1957, at Golestan Palace in Tehran. He was one-time Iranian foreign minister and twice Iranian ambassador to the United States (1957–64 and 1972–79).{{cite news|title=Iran Shah's daughter to wed engineer in simple ceremony|url=https://news.google.com/newspapers?id=ZcdGAAAAIBAJ&sjid=8vMMAAAAIBAJ&pg=1761,3998465&dq=marble+palace+tehran&hl=en|access-date=23 July 2013|newspaper=Lewiston Evening Journal Shahnaz later married Khosrow Jahanbani in February 1971 at the Iranian Embassy, Paris.{{cite web|title=Centers of Power in Iran During her father's reign, Shahnaz had investments in agricultural enterprises and assembly plants of Honda bicycles and motorcycles.",
+    "probs_E_N_C": [
+      0.0029,
+      0.8581,
+      0.1389
+    ]
+  },
+  {
+    "type": "FP",
+    "fact": "Jidenna's music is a fusion of hip-hop.",
+    "gold_label": "NS",
+    "predicted": "S",
+    "score": 0.8573,
+    "pruned": false,
+    "best_premise": "His song \"Classic Man\" was nominated for Best Rap/Sung Collaboration at the 58th Grammy Awards. In June of the same year, Jidenna performed the song with Monáe at the BET Awards.",
+    "probs_E_N_C": [
+      0.8573,
+      0.1403,
+      0.0024
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "He has since then starred in numerous films.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.0715,
+    "pruned": false,
+    "best_premise": "He is best known for his roles in the television dramas \"All In\" (2003), \"Save the Last Dance for Me\" (2004), \"New Heart\" (2007), \"Protect the Boss\" (2011), \"Secret Love\" (2013), \"Kill Me, Heal Me\" (2015), \"Innocent Defendant\" (2017), \"Familiar Wife\" (2018), \"Doctor John\" (2019), \"The Devil Judge\" (2021) and the film \"My PS Partner\" (2012). Kwak Tae-geun's parents were both educators, and they expected him to also enter the teaching profession.",
+    "probs_E_N_C": [
+      0.0715,
+      0.9263,
+      0.0021
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "\"New Heart.\" is popular.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.2171,
+    "pruned": false,
+    "best_premise": "In 2015, he reunited with \"Secret Love\" co-star Hwang Jung-eum in \"Kill Me, Heal Me\", in which he played a chaebol millionaire with dissociative identity disorder formerly known as Multiple Personality Disorder from DSMIV-TR who has seven different identities. The series was a hit and developed a cult following, winning Ji Sung the \"Daesang (Grand Prize)\" at the MBC Drama Awards.",
+    "probs_E_N_C": [
+      0.2171,
+      0.6979,
+      0.0851
+    ]
+  },
+  {
+    "type": "FN",
+    "fact": "\"Familiar Wife.\" is popular.",
+    "gold_label": "S",
+    "predicted": "NS",
+    "score": 0.0646,
+    "pruned": false,
+    "best_premise": "In 2015, he reunited with \"Secret Love\" co-star Hwang Jung-eum in \"Kill Me, Heal Me\", in which he played a chaebol millionaire with dissociative identity disorder formerly known as Multiple Personality Disorder from DSMIV-TR who has seven different identities. The series was a hit and developed a cult following, winning Ji Sung the \"Daesang (Grand Prize)\" at the MBC Drama Awards.",
+    "probs_E_N_C": [
+      0.0646,
+      0.8844,
+      0.051
+    ]
+  }
+]
