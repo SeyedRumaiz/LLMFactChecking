@@ -90,6 +90,7 @@
 
     \textbf{\large Module: CM3604 Deep Learning}\\[6mm]
     \textbf{\large Coursework Report}\\[4mm]
+    {\large Fact-Checking LLM-Generated Biographies with Word Overlap and Textual Entailment}\\[10mm]
 
     \textbf{\large Module Coordinator: Dr. Prasan Yapa}\\[14mm]
 
@@ -124,19 +125,22 @@
 % =====================================================================
 % INTRODUCTION
 % =====================================================================
-\section{Introduction}
+\section{Introduction and Data}
 \label{sec:intro}
-In Part~1, an IDF-weighted word-recall classifier with subject-name removal and corpus-level IDF reaches \textbf{87.8\%} accuracy (5-fold CV: 86.9\%), against a 75\% target. In Part~2, a DeBERTa-v3 NLI model with two-sentence premise windows and word-overlap pruning reaches \textbf{86.4\%} (5-fold CV: 85.5\%), against an 83\% target, while skipping about 37\% of model calls. Part~3 examines 10 false positives and 10 false negatives of the entailment model and groups them into four categories.
+% In Part~1, an IDF-weighted word-recall classifier with subject-name removal and corpus-level IDF reaches \textbf{87.8\%} accuracy (5-fold CV: 86.9\%), against a 75\% target. In Part~2, a DeBERTa-v3 NLI model with two-sentence premise windows and word-overlap pruning reaches \textbf{86.4\%} (5-fold CV: 85.5\%), against an 83\% target, while skipping about 37\% of model calls. Part~3 examines 10 false positives and 10 false negatives of the entailment model and groups them into four categories.
+
+In Part~1, an IDF-weighted word-recall classifier removes subject names and calculates IDF across the full corpus. It achieves an accuracy of \textbf{87.8\%}, with 86.9\% in 5-fold cross-validation, exceeding the 75\% target. Part~2 uses a DeBERTa-v3 NLI model with two-sentence premise windows and word-overlap pruning. It achieves \textbf{86.4\%} accuracy (85.5\% in 5-fold cross-validation), surpassing the 83\% target while reducing the number of model calls by around 37\%. Part~3 focuses on 10 false positives and 10 false negatives from the entailment model, grouping them into four categories to identify common error patterns.
 
 \medskip
-Large language models produce fluent but sometimes non-factual text. In this task, each ChatGPT-generated biography is split into \emph{atomic facts}, which are checked against Wikipedia passages. Each fact carries a human label: \textbf{S} (supported), \textbf{NS} (not supported) or \textbf{IR} (irrelevant). As in the provided \texttt{factchecking\_main.py}, IR is mapped to NS, which gives a balanced binary task.
+LLMs can produce text that sounds convincing but is not always factually correct. For this task, each ChatGPT-generated biography is broken down into \emph{atomic facts}, which are then checked against Wikipedia passages. Each fact is given a human-assigned label: \textbf{S} (supported), \textbf{NS} (not supported) or \textbf{IR} (irrelevant). In the provided \texttt{factchecking\_main.py}, IR is treated as NS, turning the task into a balanced binary classification problem.
 
-All methods are evaluated the same way: a fact is predicted S if its score $\geq \theta$, and $\theta$ is chosen by grid search over $[0,1]$ in steps of $0.001$, maximising accuracy (S-class F1 breaks ties). Because tuning and evaluation use the same dev set, we also report 5-fold cross-validated accuracy ($\theta$ tuned on 4/5, tested on 1/5; seed 42) and how accuracy changes with $\theta$.
+\medskip
+All methods are evaluated in the same way: a fact is classified as S if its score is $\geq \theta$. The threshold $\theta$ is selected by grid search over $[0,1]$ in steps of $0.001$, choosing the value with the highest accuracy. Since tuning and evaluation use the same development set, we also report 5-fold cross-validation accuracy ($\theta$ tuned on 4 folds and tested on the remaining fold, using seed 42), along with how accuracy varies across different threshold values.
 
 \begin{figure}[H]
 \centering
 \safefig{\linewidth}{figures/pipeline_overview.png}
-\caption{Overview of the two fact checkers. Part~2 reuses the Part~1 overlap score as a cheap pruning filter before running the NLI model.}
+\caption{Overview of the two fact checkers. Part~2 reuses the Part~1 overlap score as a pruning filter before running the NLI model.}
 \label{fig:overview}
 \end{figure}
 
@@ -148,13 +152,13 @@ All methods are evaluated the same way: a fact is predicted S if its score $\geq
 \newpage
 \section{Part 1: Word Overlap}
 \label{sec:part1}
-Each group member implemented and tuned a different overlap metric under the evaluation protocol of Section~\ref{sec:intro}. The best-performing method is used in \texttt{factcheck.py}.
+Each group member implemented and tuned a different overlap metric under the evaluation protocol of Section~\ref{sec:intro}. The best-performing method is used in \texttt{factcheck.py} (Section~\ref{sec:p1final}).
 
 % ---------------------------------------------------------------------
 \subsection{TF-IDF and IDF-weighted recall (Rumaiz)}
 \label{sec:p1rumaiz}
 
-\paragraph{Preprocessing:} Text is lower-cased, \texttt{<s>} markup is stripped and punctuation is replaced by spaces; digits are kept because years are often the deciding detail. The table below lists the remaining choices, each tested in the ablation below.
+\paragraph{Preprocessing:} Text is converted to lowercase, \texttt{<s>} markup is removed, and punctuation is replaced with spaces. Digits are kept because years can be important when checking facts. The table below shows the other preprocessing choices, which are each tested in the ablation study below.
 
 \begin{table}[H]
 \centering
@@ -165,18 +169,20 @@ Step & Choice & Reason \\
 \midrule
 Stopwords & spaCy list \emph{minus} negations (\textit{no, not, never, \dots}) & Removes function words that inflate overlap; keeping negations stops ``did \emph{not} win'' matching ``won''. \\
 Stemming & Porter & Matches variants (\textit{acting, acted $\rightarrow$ act}). \\
-N-grams & Unigrams & Bigrams lowered accuracy (below table). \\
+N-grams & Unigrams & Bigrams lowered accuracy (refer below table). \\
 Evidence unit & Sentence or passage & Both evaluated. \\
 \bottomrule
 \end{tabularx}
 \caption{Preprocessing choices.}
 \end{table}
 
-\paragraph{Scoring:} With $F$ the fact's terms and $U$ an evidence unit's terms, IDF uses the smoothed form $\mathrm{idf}(t) = \log\frac{N+1}{\mathrm{df}(t)+1} + 1$. The baseline is TF-IDF cosine (log-scaled TF, L2-normalised vectors). Cosine penalises long evidence for words the fact lacks, whereas verification only asks how much of the fact is covered, so we also use IDF-weighted recall:
+\paragraph{Scoring:} Let $F$ represent the terms in a fact and $U$ the terms in an evidence unit. IDF is calculated using the smoothed formula $\mathrm{idf}(t) = \log\frac{N+1}{\mathrm{df}(t)+1} + 1$. The baseline method uses TF-IDF cosine similarity, with log-scaled term frequency and L2-normalised vectors. However, cosine similarity can penalise longer evidence passages for containing words that are not in the fact. Since fact verification mainly focuses on how much of a fact is covered by the evidence, we also use IDF-weighted recall:
+
 \begin{equation}
 \mathrm{score}(f) = \max_{U}\ \frac{\sum_{t \in F \cap U} \mathrm{idf}(t)}{\sum_{t \in F} \mathrm{idf}(t)} .
 \end{equation}
-Everything is implemented from scratch, so \texttt{factcheck.py} needs no extra libraries.
+
+All methods are implemented from scratch, so \texttt{factcheck.py} does not require any additional libraries.
 
 \begin{table}[H]
 \centering
@@ -196,14 +202,13 @@ Cosine     & sentence & 1   &            &            & 0.288 & 0.701 & 0.730 & 
 Cosine     & sentence & 1+2 &            &            & 0.144 & 0.692 & 0.667 & 0.786 & 0.721 \\
 \bottomrule
 \end{tabular}
-\caption{Ablation (dev set, $n=221$); each row has its own tuned $\theta$. P/R/F1 are for the S class.}
+\caption{Ablation results on the dev set ($n=221$), with a separately tuned $\theta$ for each row. P/R/F1 refer to the S class.}
 \end{table}
 
+\newpage
+\noindent \textbf{Findings:} With the same preprocessing, IDF-weighted recall performs better than cosine similarity (76.0\% compared to 80.1\%). Removing stopwords and applying stemming also improve accuracy (70.1\% to 76.0\%). However, adding bigrams reduces accuracy (76.0\% to 72.0\%), likely because most facts are only 5--10 words long.
 
-
-\noindent \textbf{Findings:} Recall beats cosine by 4.1 points with preprocessing fixed (76.0\% $\rightarrow$ 80.1\%). Stopword removal and stemming help (70.1\% $\rightarrow$ 76.0\%), while bigrams hurt (76.0\% $\rightarrow$ 72.0\%) because facts are only 5--10 words long.
-
-\paragraph{Subject-name removal and global IDF:} Two further changes, neither using the labels, gave the largest gain (refering the below table): (1) removing the subject's name (taken from the page title), which appears in every passage and gives unsupported facts free overlap; and (2) estimating IDF over all 1{,}562 unique passages instead of the 2--5 passages of each fact. The two interact: global IDF alone slightly hurts because rare names get large weights, but with names removed it gives the best result.
+\paragraph{Subject-name removal and global IDF:} Two additional changes, both made without using the labels, gave the biggest improvement (Table~\ref{tab:tuning}, Figure~\ref{fig:p1scorer}). First, the subject's name (taken from the page title) is removed because it appears in every passage and can make unsupported facts seem more relevant. Second, IDF is calculated using all 1{,}562 unique passages instead of just the 2--5 passages available for each fact. These changes work better together. Using global IDF alone slightly reduces accuracy because rare names receive higher weights. However, removing subject names first gives the best overall result.
 
 \begin{table}[H]
 \centering
@@ -223,12 +228,12 @@ sentence &            & local  & 0.424 & 0.801 & 0.756 \\
 sentence &            & global & 0.494 & 0.792 & 0.751 \\
 \bottomrule
 \end{tabular}
-\caption{Factorial test of name removal, IDF source and evidence unit.}
+\caption{Comparison of name removal, IDF source and evidence unit across different combinations.}
 \end{table}
 
 \begin{figure}[H]
 \centering
-\safefig{0.6\linewidth}{figures/part1_scorer.png}
+\safefig{0.55\linewidth}{figures/part1_scorer.png}
 \caption{The final IDF-recall scorer applied to an example fact.}
 \label{fig:p1scorer}
 \end{figure}
@@ -263,10 +268,9 @@ sentence &            & global & 0.494 & 0.792 & 0.751 \\
 \placeholder{Shavindu: method, preprocessing, tuning and results.}
 
 % ---------------------------------------------------------------------
-\newpage
 \subsection{Comparison and final model}
 \label{sec:p1final}
-The table below compares each member's best configuration. IDF-weighted recall with name removal and global IDF is the most accurate, so it is the \texttt{WordRecallThresholdFactChecker} in \texttt{factcheck.py}.
+Table~\ref{tab:methods} compares each member's best configuration. IDF-weighted recall with name removal and global IDF is the most accurate, so it is the \texttt{WordRecallThresholdFactChecker} in \texttt{factcheck.py}.
 
 \begin{table}[H]
 \centering
@@ -283,10 +287,10 @@ ROUGE-1 recall & Dion & 0.819 & 0.783 \\
 \textbf{IDF-recall + name removal + global IDF} & Rumaiz & \textbf{0.878} & \textbf{0.869} \\
 \bottomrule
 \end{tabular}
-\caption{Best configuration of each word-overlap method}
+\caption{Best configuration of each word-overlap method (dev accuracy, $n=221$). CV is 5-fold cross-validation; Dion's ROUGE/BLEU use folds grouped by biography.}
 \end{table}
 
-\noindent The final threshold $\theta = 0.457$ is the centre of a plateau: accuracy stays at or above 85\% for $\theta \in [0.43, 0.53]$, whereas cosine has a sharp peak (Figure~\ref{fig:p1}).
+\noindent The final threshold is set to $\theta = 0.457$, which falls within a stable range where accuracy remains at or above 85\% for values between $0.43$ and $0.53$. In comparison, cosine similarity has a much narrower peak (Figure~\ref{fig:p1}).
 
 \begin{figure}[H]
 \centering
@@ -312,22 +316,20 @@ NS & 0.866 & 0.890 & 0.878 \\
 
 \optfig{0.85\linewidth}{figures/terminal_word_overlap.png}{Output of \texttt{python factchecking\_main.py --mode word\_overlap}.}
 
-\paragraph{Limitations:} Bag-of-words matching ignores word order and relations, misses paraphrases (\textit{actress} vs \textit{appeared in films}), and is fooled when the words match but the claimed relation differs.
+\paragraph{Limitations:} Bag-of-words matching does not consider word order or relationships between words. It can also miss paraphrases (e.g., \textit{actress} vs \textit{appeared in films}) and may incorrectly support a fact when the same words appear in the evidence but describe a different relationship.
 
 % =====================================================================
 % PART 2: TEXTUAL ENTAILMENT (40%)
 % =====================================================================
-\newpage
 \section{Part 2: Textual Entailment}
 \label{sec:part2}
 
 \subsection{Model and setup}
-All members use \texttt{MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli}, which returns logits for entailment, neutral and contradiction; a softmax turns them into probabilities $[P(E), P(N), P(C)]$. A three-pair smoke test confirmed this label order. The fact is the hypothesis and Wikipedia text is the premise.
+All members use \texttt{MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli}, which produces logits for entailment, neutral and contradiction. These are converted into probabilities using softmax, giving $[P(E), P(N), P(C)]$. A test with three text pairs confirmed that the labels are in the expected order. The fact is used as the hypothesis, while the Wikipedia text serves as the premise.
 
-% ---------------------------------------------------------------------
 \subsection{Window premises, max $P(E)$ and pruning (Rumaiz)}
 \label{sec:p2rumaiz}
-\paragraph{Passage preprocessing:} Passages are split on \texttt{<s>} markers and sentence punctuation, whitespace is normalised and fragments under three words (e.g.\ ``Career.'') are dropped, giving 5{,}417 premise--fact pairs. Model outputs were cached once so that decision rules, thresholds and pruning could be compared without re-running the model.
+\paragraph{Passage preprocessing:} Passages are split using \texttt{<s>} markers and sentence punctuation. Extra whitespace is removed, and fragments with fewer than three words (e.g.\ ``Career.'') are discarded. This leaves 5{,}417 premise--fact pairs. Model outputs are cached after the first run, allowing different decision rules, thresholds and pruning settings to be tested without running the model again.
 
 \begin{table}[H]
 \centering
@@ -351,6 +353,7 @@ window & threshold on max $[P(E)-P(C)]$ & 0.303 & 0.837 \\
 
 \begin{table}[H]
 \centering
+\caption{Fact-level pruning with the Part~1 score (window premise, max $P(E)$). ``S lost'' counts supported facts wrongly pruned.}
 \label{tab:pruning}
 \begin{tabular}{cccccc}
 \toprule
@@ -364,13 +367,12 @@ $\tau$ & Facts pruned & S lost & Calls skipped & $\theta$ & Accuracy \\
 0.30 & 83 & 11 & 33.1\% & 0.027 & 0.860 \\
 \bottomrule
 \end{tabular}
-\caption{Fact-level pruning with the Part~1 score (window premise, max $P(E)$). ``S lost'' counts supported facts wrongly pruned.}
 \end{table}
 
-\noindent Pruning \textbf{improves both speed and accuracy}: facts with almost no word overlap are nearly always unsupported, and removing them removes false positives. Above $\tau \approx 0.15$ more supported facts are lost, so $\tau = 0.1$ is used. Pruning individual \emph{sentences} instead hurts (84.2\% $\rightarrow$ 82.4\%), because pronoun sentences have low overlap but are the evidence the model needs.
+% \noindent Pruning \textbf{improves both speed and accuracy}: facts with almost no word overlap are nearly always unsupported, and removing them removes false positives. Above $\tau \approx 0.15$ more supported facts are lost, so $\tau = 0.1$ is used. Pruning individual \emph{sentences} instead hurts (84.2\% $\rightarrow$ 82.4\%), because pronoun sentences have low overlap but are the evidence the model needs.
 
-\subsection{Tamadhi's approach}
-\placeholder{Tamadhi: premise construction, decision rule, pruning and results.}
+\noindent Pruning improves both speed and accuracy. Facts with very little word overlap are usually unsupported, so removing them also helps reduce false positives. However, when $\tau$ goes above approximately $0.15$, more supported facts are lost. Therefore, $\tau = 0.1$ is used. Pruning individual \emph{sentences} has the opposite effect, reducing accuracy from 84.2\% to 82.4\%. This is because sentences containing pronouns may have little word overlap but still provide useful evidence for the model.
+
 % ---------------------------------------------------------------------
 \subsection{Discrete entailment over title-prefixed sentences (Dion)}
 \label{sec:p2dion}
@@ -409,11 +411,12 @@ Discrete any-entailment, title-prefixed sentences & Dion & 0.846 \\
 \caption{Best entailment configuration of each member (dev accuracy, $n=221$).}
 \end{table}
 
-\noindent The final \texttt{EntailmentFactChecker} uses window premises, max $P(E)$, pruning at $\tau=0.1$ and $\theta=0.325$, the centre of the optimal plateau $[0.314, 0.336]$; accuracy is at least 83\% for any $\theta \in [0.02, 0.78]$, and 5-fold CV accuracy is $85.5\% \pm 2.3$. Figure~\ref{fig:p2flow} shows how it predicts.
+% \noindent The final \texttt{EntailmentFactChecker} uses window premises, max $P(E)$, pruning at $\tau=0.1$ and $\theta=0.325$, the centre of the optimal plateau $[0.314, 0.336]$; accuracy is at least 83\% for any $\theta \in [0.02, 0.78]$, and 5-fold CV accuracy is $85.5\% \pm 2.3$. Figure~\ref{fig:p2flow} shows how it predicts.
+\noindent The final \texttt{EntailmentFactChecker} uses window premises, max $P(E)$, pruning with $\tau=0.1$ and a threshold of $\theta=0.325$. This threshold is chosen from the middle of the best-performing range, $[0.314, 0.336]$. Accuracy remains at or above 83\% across a much wider range of $\theta$ values, from $0.02$ to $0.78$. The 5-fold cross-validation accuracy is $85.5\% \pm 2.3$. Figure~\ref{fig:p2flow} shows the steps followed when making a prediction.
 
 \begin{figure}[!htb]
 \centering
-\safefig{0.6\linewidth}{figures/part2_checker.png}
+\safefig{0.55\linewidth}{figures/part2_checker.png}
 \caption{Prediction flow of the final \texttt{EntailmentFactChecker}.}
 \label{fig:p2flow}
 \end{figure}
@@ -432,11 +435,11 @@ NS & 0.843 & 0.890 & 0.866 \\
 \caption{Final entailment model: accuracy 191/221 = \textbf{86.4\%} (TP 94, FN 18, FP 12, TN 97).}
 \end{table}
 
-\paragraph{Efficiency and memory:} Inference runs under \texttt{torch.no\_grad()} in batches of 16 (inputs truncated to 512 tokens), tensors are freed after each batch, and a fact is predicted S as soon as a batch reaches $\theta$ (early exit). Table~\ref{tab:runtime} compares full runs with and without pruning (MacBook Air, CPU only). Pruning makes prediction 21\% faster and removes 7 false positives while adding 2 false negatives; peak memory stays below 1.7\,GB.
+% \paragraph{Efficiency and memory.} Inference runs under \texttt{torch.no\_grad()} in batches of 16 (inputs truncated to 512 tokens), tensors are freed after each batch, and a fact is predicted S as soon as a batch reaches $\theta$ (early exit). Table~\ref{tab:runtime} compares full runs with and without pruning (MacBook Air, CPU only). Pruning makes prediction 21\% faster and removes 7 false positives while adding 2 false negatives; peak memory stays below 1.7\,GB.
+\paragraph{Efficiency and memory:} The model runs inference using \texttt{torch.no\_grad()} with batches of 16, and inputs are limited to 512 tokens. Tensors are cleared after each batch, and a fact is classified as S as soon as its score reaches $\theta$ (early exit). Table~\ref{tab:runtime} compares the full model runs with and without pruning on a CPU-only MacBook Air. Pruning reduces prediction time by 21\%, removes 7 false positives and adds 2 false negatives. Peak memory usage remains below 1.7\,GB.
 
 \begin{table}[H]
 \centering
-\caption{Measured effect of pruning (prediction loop excludes model loading).}
 \label{tab:runtime}
 \begin{tabular}{lcccc}
 \toprule
@@ -446,11 +449,29 @@ No pruning ($\tau=0$) & 84.2\% & 232\,s & 263\,s & 1{,}604\,MB \\
 Pruning ($\tau=0.1$) & \textbf{86.4\%} & \textbf{183\,s} & \textbf{216\,s} & 1{,}313\,MB \\
 \bottomrule
 \end{tabular}
+\caption{Measured effect of pruning (prediction loop excludes model loading).}
 \end{table}
 
-\optfig{0.85\linewidth}{figures/terminal_entailment.png}{Output of \texttt{python factchecking\_main.py --mode entailment}.}
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.82\linewidth}
+\centering
+\safefig{\linewidth}{figures/terminal_entailment.png}
+\caption{Final model, pruning $\tau = 0.1$: 191/221.}
+\end{subfigure}
 
-\paragraph{Comparison with Part 1:} The tuned lexical model (87.8\%) slightly outperforms entailment (86.4\%) on this dev set. The NLI model handles paraphrase and pronouns but over-trusts topical similarity (Section~\ref{sec:part3}).
+\vspace{4pt}
+\begin{subfigure}{0.82\linewidth}
+\centering
+\safefig{\linewidth}{figures/terminal_entailment_noprune.png}
+\caption{Without pruning ($\tau = 0$): 186/221.}
+\end{subfigure}
+\caption{Output of \texttt{/usr/bin/time -l python factchecking\_main.py --mode entailment}}
+\label{fig:term2}
+\end{figure}
+
+% \paragraph{Comparison with Part 1:} The tuned lexical model (87.8\%) slightly outperforms entailment (86.4\%) on this dev set. The NLI model handles paraphrase and pronouns but over-trusts topical similarity (Section~\ref{sec:part3}).
+\paragraph{Comparison with Part 1:} The tuned lexical model achieves slightly higher accuracy (87.8\%) than the entailment model (86.4\%) on the dev set. However, the NLI model is better at handling paraphrases and pronouns, although it can sometimes treat topical similarity as evidence of support (Section~\ref{sec:part3}).
 
 % =====================================================================
 % PART 3: ERROR ANALYSIS
@@ -461,12 +482,28 @@ Pruning ($\tau=0.1$) & \textbf{86.4\%} & \textbf{183\,s} & \textbf{216\,s} & 1{,
 \label{sec:part3}
 This part analyses the errors of the final entailment model from Part~2 (86.4\% accuracy, $\theta = 0.325$, pruning at $\tau = 0.1$). The model makes \textbf{30 errors}: 12 false positives (FP: predicted S, gold NS/IR) and 18 false negatives (FN: predicted NS, gold S).
 
-We manually examined 10 FPs and 10 FNs. For each one we read the fact, the highest-scoring premise and the full retrieved passages, and recorded why the prediction was wrong. From the 12 FPs we left out one that repeats FP7 almost word for word (``He has worked as a scientist at various organizations'') and one likely labelling error. From the 18 FNs we chose 10 that cover as many different biographies as possible, leaving out further facts from the same page with the same cause (for example, two more Katsu novels) and two facts with likely labelling or retrieval problems. The three set-aside problem cases are discussed in Section~\ref{sec:noise}.
+% We manually examined 10 FPs and 10 FNs. For each one of them we read the fact, the highest-scoring premise and the full retrieved passages, and recorded why the prediction was wrong. From the 12 FPs we left out one that repeats FP7 almost word for word (``He has worked as a scientist at various organizations'') and one likely labelling error. From the 18 FNs we chose 10 that cover as many different biographies as possible, leaving out further facts from the same page with the same cause (for example, two more Katsu novels) and two facts with likely labelling or retrieval problems. The three set-aside problem cases are discussed in Section~\ref{sec:noise}.
+We manually examined 10 FPs and 10 FNs. For each case, we looked at the fact, the premise with the highest score and the full retrieved passages to understand why the prediction was incorrect. Of the 12 FPs, we excluded one that was almost identical to FP7 (``He has worked as a scientist at various organizations'') and another that was likely a labelling error. From the 18 FNs, we selected 10 that covered as many different biographies as possible. We left out additional facts from the same page that had the same underlying issue (such as two more Katsu novels), along with two cases that likely involved labelling or retrieval problems. The three excluded problem cases are discussed in Section~\ref{sec:noise}.
 
 \subsection{Error categories}
 \label{sec:cats}
-Each examined error was assigned to the single category that best explains it in the below table.
+Each of the examined errors was assigned to the single category that best explains it in the below table.
 
+% \begin{table}[H]
+% \centering
+% \label{tab:cats}
+% \begin{tabularx}{\linewidth}{c >{\raggedright\arraybackslash}p{4.0cm} Y}
+% \toprule
+% & Category & Definition \\
+% \midrule
+% A & Topical overlap without the claimed relation & The evidence names the same entities or topic as the fact but states a different relation (e.g.\ \emph{studied at} instead of \emph{worked at}, \emph{Under-20} instead of \emph{Under-19}). The model treats topical similarity as entailment. \\
+% B & Vague, generic or world-knowledge claims & The fact is too general, evaluative or common-sense to be stated in the passage (``worked with a number of organisations'', ``Cleveland is in Ohio'', ``X is popular''). The model either over-generalises from loosely related evidence (FP) or finds nothing explicit (FN). \\
+% C & Evidence in non-sentential or noisy text & The supporting information is only in a list, bibliography, honours table or broken sentence, so no premise states it as a proposition the NLI model can match. \\
+% D & Surface-form mismatch, amplified by pruning & The fact and the evidence use different forms of the same thing (\emph{Fischer}/\emph{Fisher}, \emph{Argentinian}/\emph{Argentine}, \emph{United Kingdom}/\emph{London}). Low word overlap gets the fact pruned, or the model fails to align the two forms. \\
+% \bottomrule
+% \end{tabularx}
+% \caption{Error categories.}
+% \end{table}
 \begin{table}[H]
 \centering
 \label{tab:cats}
@@ -474,16 +511,19 @@ Each examined error was assigned to the single category that best explains it in
 \toprule
 & Category & Definition \\
 \midrule
-A & Topical overlap without the claimed relation & The evidence names the same entities or topic as the fact but states a different relation (e.g.\ \emph{studied at} instead of \emph{worked at}, \emph{Under-20} instead of \emph{Under-19}). The model treats topical similarity as entailment. \\
-B & Vague, generic or world-knowledge claims & The fact is too general, evaluative or common-sense to be stated in the passage (``worked with a number of organisations'', ``Cleveland is in Ohio'', ``X is popular''). The model either over-generalises from loosely related evidence (FP) or finds nothing explicit (FN). \\
-C & Evidence in non-sentential or noisy text & The supporting information is only in a list, bibliography, honours table or broken sentence, so no premise states it as a proposition the NLI model can match. \\
-D & Surface-form mismatch, amplified by pruning & The fact and the evidence use different forms of the same thing (\emph{Fischer}/\emph{Fisher}, \emph{Argentinian}/\emph{Argentine}, \emph{United Kingdom}/\emph{London}). Low word overlap gets the fact pruned, or the model fails to align the two forms. \\
+A & Topical overlap without the correct relation & The evidence mentions the same people, places or topics as the fact but describes a different relationship (e.g.\ \emph{studied at} instead of \emph{worked at}, or \emph{Under-20} instead of \emph{Under-19}). The model mistakes similar topics for actual support. \\
+
+B & Vague, general or common-knowledge claims & The fact is too general, subjective or based on common knowledge to be directly supported by the passage (e.g.\ ``worked with a number of organisations'', ``Cleveland is in Ohio'', ``X is popular''). The model either assumes support from loosely related evidence (FP) or fails to find an explicit statement (FN). \\
+
+C & Evidence in lists or unclear text & The supporting information appears only in a list, bibliography, honours table or incomplete sentence. As a result, the NLI model cannot easily match it to the fact as a complete statement. \\
+
+D & Different wording, made worse by pruning & The fact and evidence use different names or forms for the same thing (e.g.\ \emph{Fischer}/\emph{Fisher}, \emph{Argentinian}/\emph{Argentine}, \emph{United Kingdom}/\emph{London}). This can lead to low word overlap and cause the fact to be removed during pruning, or prevent the model from recognising the connection. \\
 \bottomrule
 \end{tabularx}
-\caption{Error categories.}
+\caption{Categories used to group the errors.}
 \end{table}
 
-\noindent Figure~\ref{fig:errsources} shows where in the pipeline each category arises: D at the pruning step, C when premises are built from the passages, and A and B when the NLI model scores the premises.
+\noindent Figure~\ref{fig:errsources} shows which parts of the pipeline are linked to each error category. Category D occurs during pruning, Category C arises when passages are split into premises, and Categories A and B occur when the NLI model evaluates the premises.
 
 \begin{figure}[H]
 \centering
@@ -567,13 +607,24 @@ Total & 10 & 10 & 20 \\
 \label{fig:errstats}
 \end{figure}
 
-\noindent The main trends are:
+% \noindent The main trends are:
+% \begin{itemize}
+% \item \textbf{False positives come from over-trusting similarity.} All 10 FPs are in categories A and B, and 9 of them have $P(E) > 0.70$ (Figure~\ref{fig:errstats}b). The model is confidently wrong when the evidence is about the right person and topic but does not state the claim.
+% \item \textbf{False negatives come from how the evidence is written.} 8 of the 10 FNs are in categories C and D: the fact is true, but the evidence is in a list, uses a different form of a word, or never reaches the model. 7 of the 8 FNs that reached the model have $P(E) < 0.1$, far below $\theta$.
+% \item \textbf{The two error types are well separated.} No examined error lies close to $\theta$, so changing the threshold would not fix them without creating new errors.
+% \item \textbf{Pruning causes a small but specific share of errors.} 2 of the 10 FNs (FN7, FN9) were pruned before reaching the model, which would have entailed both with $P(E) > 0.99$. Pruning still helps overall: it raises accuracy from 84.2\% to 86.4\% and makes prediction 21\% faster (Table~\ref{tab:runtime}).
+% \end{itemize}
+\noindent The main findings are:
 \begin{itemize}
-\item \textbf{False positives come from over-trusting similarity.} All 10 FPs are in categories A and B, and 9 of them have $P(E) > 0.70$ (Figure~\ref{fig:errstats}b). The model is confidently wrong when the evidence is about the right person and topic but does not state the claim.
-\item \textbf{False negatives come from how the evidence is written.} 8 of the 10 FNs are in categories C and D: the fact is true, but the evidence is in a list, uses a different form of a word, or never reaches the model. 7 of the 8 FNs that reached the model have $P(E) < 0.1$, far below $\theta$.
-\item \textbf{The two error types are well separated.} No examined error lies close to $\theta$, so changing the threshold would not fix them without creating new errors.
-\item \textbf{Pruning causes a small but specific share of errors.} 2 of the 10 FNs (FN7, FN9) were pruned before reaching the model, which would have entailed both with $P(E) > 0.99$. Pruning still helps overall: it raises accuracy from 84.2\% to 86.4\% and makes prediction 21\% faster (Table~\ref{tab:runtime}).
+\item \textbf{False positives are mainly caused by similar topics being mistaken for evidence:} All 10 FPs fall into categories A and B, and 9 have $P(E) > 0.70$. This shows that the model can be confidently wrong when the evidence discusses the right person or topic but does not actually support the claim.
+
+\item \textbf{False negatives are mainly caused by how the evidence is presented:} 8 of the 10 FNs fall into categories C and D. In these cases, the fact is true, but the evidence appears in a list, uses different wording or is removed before reaching the model. Of the 8 FNs that reached the model, 7 had $P(E) < 0.1$, well below the threshold $\theta$.
+
+\item \textbf{The two types of errors are clearly separated:} None of the examined errors had a score close to $\theta$. This means that simply changing the threshold would not fix these errors without introducing new ones.
+
+\item \textbf{Pruning causes a small number of specific errors:} 2 of the 10 FNs (FN7 and FN9) were removed during pruning before reaching the model. Without pruning, both would have been classified as supported, with $P(E) > 0.99$. However, pruning still improves overall performance, increasing accuracy from 84.2\% to 86.4\% while reducing prediction time by 21\% (Table 10).
 \end{itemize}
+
 
 \subsection{Detailed examples}
 \label{sec:examples}
@@ -585,7 +636,8 @@ Total & 10 & 10 & 20 \\
 \item[(b)] \textbf{Gold label:} NS
 \item[(c)] \textbf{Predicted:} S ($P(E) = 0.993$)
 \item[(d)] \textbf{Category:} A
-\item[(e)] \textbf{Why it was wrong:} Trivisonno and WKNR appear together in a radio-career context, but WKNR is the \emph{rival} station his show competed against, not his employer. The model rewards the two entities appearing together in the right domain instead of checking the \emph{worked at} relation between them.
+% \item[(e)] \textbf{Why it was wrong:} Trivisonno and WKNR appear together in a radio-career context, but WKNR is the \emph{rival} station his show competed against, not his employer. The model rewards the two entities appearing together in the right domain instead of checking the \emph{worked at} relation between them.
+\item[(e)] \textbf{Why it was wrong:} Trivisonno and WKNR are mentioned together in the context of his radio career. However, WKNR was the \emph{rival} station his show competed against, not his employer. The model focuses on the fact that both are mentioned in the same context instead of checking whether the evidence actually supports the \emph{worked at} relationship.
 \end{itemize}
 
 \paragraph{Example 2: surface-form mismatch amplified by pruning (FN9).}
@@ -595,7 +647,8 @@ Total & 10 & 10 & 20 \\
 \item[(b)] \textbf{Gold label:} S
 \item[(c)] \textbf{Predicted:} NS (pruned; the model was never run)
 \item[(d)] \textbf{Category:} D
-\item[(e)] \textbf{Why it was wrong:} The word-overlap score ignores the subject's name, so the only remaining content word is \emph{argentinian}. After stemming it does not match \emph{argentine} (stem \emph{argentin}), the score is 0, and the fact is pruned. The cached model output for the same evidence gives $P(E) = 0.993$, so this error comes entirely from the lexical pruning step and not from the NLI model (Figure~\ref{fig:prunetrace}).
+% \item[(e)] \textbf{Why it was wrong:} The word-overlap score ignores the subject's name, so the only remaining content word is \emph{argentinian}. After stemming it does not match \emph{argentine} (stem \emph{argentin}), the score is 0, and the fact is pruned. The cached model output for the same evidence gives $P(E) = 0.993$, so this error comes entirely from the lexical pruning step and not from the NLI model (Figure~\ref{fig:prunetrace}).
+\item[(e)] \textbf{Why it was wrong:} The word-overlap score does not consider the subject's name, leaving \emph{argentinian} as the only content word. After stemming, it still does not match \emph{argentine} (stemmed as \emph{argentin}), resulting in a score of 0 and causing the fact to be pruned. However, the cached model output for the same evidence gives $P(E) = 0.993$. This shows that the error comes from the lexical pruning step rather than the NLI model (Figure~\ref{fig:prunetrace}).
 \end{itemize}
 
 \begin{figure}[H]
@@ -612,19 +665,26 @@ Total & 10 & 10 & 20 \\
 \item[(b)] \textbf{Gold label:} S
 \item[(c)] \textbf{Predicted:} NS (best $P(E) = 0.006$)
 \item[(d)] \textbf{Category:} C
-\item[(e)] \textbf{Why it was wrong:} The support is a bibliography list with no verb and no mention of the author; authorship is only implied by the page the list appears on. The NLI model was trained on sentence pairs, so a premise like ``- `The Hunger', Transworld, March 2018 ()'' gives it no statement to entail.
+% \item[(e)] \textbf{Why it was wrong:} The support is a bibliography list with no verb and no mention of the author; authorship is only implied by the page the list appears on. The NLI model was trained on sentence pairs, so a premise like ``- `The Hunger', Transworld, March 2018 ()'' gives it no statement to entail.
+\item[(e)] \textbf{Why it was wrong:} The supporting evidence appears in a bibliography list, with no verb or mention of the author's name. The authorship is only implied by the page containing the list. Since the NLI model was trained on sentence pairs, a premise such as ``- `The Hunger', Transworld, March 2018 ()'' does not provide a clear statement for the model to verify.
 \end{itemize}
 
 \subsection{Discussion}
 \label{sec:noise}
 
-\paragraph{Label and retrieval problems:} Three of the errors we set aside are not caused by the model. ``He served as a sniper'' (gold NS) is stated almost word for word in the passage (``a Canadian former military sniper''). ``She was born on July 18, 1987'' (gold S) conflicts with the passage, which gives ``14 August 1987''. For ``They divorced in 1964'' (gold S) the retrieved passages never mention the divorce; the only ``1964'' is the end of an ambassadorship (``1957--64''). The annotators judged facts against their own Wikipedia lookups, which can differ from the passages the model receives. Errors like these put a ceiling on achievable accuracy.
+% \paragraph{Label and retrieval problems:} Three of the errors we set aside are not caused by the model. ``He served as a sniper'' (gold NS) is stated almost word for word in the passage (``a Canadian former military sniper''). ``She was born on July 18, 1987'' (gold S) conflicts with the passage, which gives ``14 August 1987''. For ``They divorced in 1964'' (gold S) the retrieved passages never mention the divorce; the only ``1964'' is the end of an ambassadorship (``1957--64''). The annotators judged facts against their own Wikipedia lookups, which can differ from the passages the model receives. Errors like these put a ceiling on achievable accuracy.
 
-\paragraph{Confidence is not the problem:} Because the FPs have high $P(E)$ and the FNs very low $P(E)$, recalibrating or retuning $\theta$ cannot remove them. The errors come from \emph{what} the model attends to: entity overlap rather than the claimed relation (A, B), and the format of the evidence (C, D).
+% \paragraph{Confidence is not the problem:} Because the FPs have high $P(E)$ and the FNs very low $P(E)$, recalibrating or retuning $\theta$ cannot remove them. The errors come from \emph{what} the model attends to: entity overlap rather than the claimed relation (A, B), and the format of the evidence (C, D).
 
-\paragraph{Limitations of this analysis:} Categories were assigned by one annotator and each error was given a single category, although some errors have more than one cause. The counts are small, so the percentages should be read as trends rather than precise estimates.
+% \paragraph{Limitations of this analysis:} Categories were assigned by one annotator and each error was given a single category, although some errors have more than one cause. The counts are small, so the percentages should be read as trends rather than precise estimates.
+\paragraph{Label and retrieval problems:} Three of the errors we set aside are not actually caused by the model. The fact ``He served as a sniper'' (gold NS) is almost directly stated in the passage as ``a Canadian former military sniper''. The fact ``She was born on July 18, 1987'' (gold S) does not match the passage, which gives the date as ``14 August 1987''. In the third case, ``They divorced in 1964'' (gold S), the retrieved passages do not mention the divorce at all. The only reference to ``1964'' is the end of an ambassadorship (``1957--64''). The annotators checked facts using their own Wikipedia searches, which may return different information from the passages given to the model. These issues limit the accuracy the model can realistically achieve.
 
-\paragraph{Possible improvements:}
+\paragraph{Confidence is not the problem:} The FPs have high $P(E)$ scores, while the FNs have very low scores. This means that changing the threshold $\theta$ or adjusting the model's confidence is unlikely to fix these errors. The main issue is \emph{what} the model focuses on: matching entities instead of checking the claimed relationship (categories A and B), and how the supporting evidence is presented (categories C and D).
+
+\paragraph{Limitations of this analysis:} All errors were categorised by a single annotator, with each error assigned to only one category, even though some may have multiple causes. The number of examples is also small, so the percentages should be treated as general trends rather than exact estimates.
+
+
+\paragraph{Possible improvements.}
 \begin{itemize}
 \item \textbf{Category D:} normalise surface forms before pruning (map demonyms such as \emph{Argentinian} to \emph{Argentina}, fuzzy-match names such as \emph{Fischer}/\emph{Fisher}), or prune only when the overlap score is very low.
 \item \textbf{Category C:} turn list and table items into sentences before running NLI, for example by attaching the section header and page subject (``Katsu's standalone novels include The Hunger'').
