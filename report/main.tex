@@ -90,7 +90,6 @@
 
     \textbf{\large Module: CM3604 Deep Learning}\\[6mm]
     \textbf{\large Coursework Report}\\[4mm]
-    {\large Fact-Checking LLM-Generated Biographies with Word Overlap and Textual Entailment}\\[10mm]
 
     \textbf{\large Module Coordinator: Dr. Prasan Yapa}\\[14mm]
 
@@ -125,7 +124,7 @@
 % =====================================================================
 % INTRODUCTION
 % =====================================================================
-\section{Introduction and Data}
+\section{Introduction}
 \label{sec:intro}
 % In Part~1, an IDF-weighted word-recall classifier with subject-name removal and corpus-level IDF reaches \textbf{87.8\%} accuracy (5-fold CV: 86.9\%), against a 75\% target. In Part~2, a DeBERTa-v3 NLI model with two-sentence premise windows and word-overlap pruning reaches \textbf{86.4\%} (5-fold CV: 85.5\%), against an 83\% target, while skipping about 37\% of model calls. Part~3 examines 10 false positives and 10 false negatives of the entailment model and groups them into four categories.
 
@@ -206,9 +205,9 @@ Cosine     & sentence & 1+2 &            &            & 0.144 & 0.692 & 0.667 & 
 \end{table}
 
 \newpage
-\noindent \textbf{Findings:} With the same preprocessing, IDF-weighted recall performs better than cosine similarity (76.0\% compared to 80.1\%). Removing stopwords and applying stemming also improve accuracy (70.1\% to 76.0\%). However, adding bigrams reduces accuracy (76.0\% to 72.0\%), likely because most facts are only 5--10 words long.
+\noindent \textbf{Findings:} With the same preprocessing, IDF-weighted recall performs better than cosine similarity (80.1\% compared to 76.0\%). Removing stopwords and applying stemming also improve accuracy (70.1\% to 76.0\%). However, adding bigrams reduces accuracy (76.0\% to 72.0\%), likely because most facts are only 5--10 words long.
 
-\paragraph{Subject-name removal and global IDF:} Two additional changes, both made without using the labels, gave the biggest improvement (Table~\ref{tab:tuning}, Figure~\ref{fig:p1scorer}). First, the subject's name (taken from the page title) is removed because it appears in every passage and can make unsupported facts seem more relevant. Second, IDF is calculated using all 1{,}562 unique passages instead of just the 2--5 passages available for each fact. These changes work better together. Using global IDF alone slightly reduces accuracy because rare names receive higher weights. However, removing subject names first gives the best overall result.
+\paragraph{Subject-name removal and global IDF:} Two additional changes, both made without using the labels, gave the biggest improvement (Table 3, Figure~\ref{fig:p1scorer}). First, the subject's name (taken from the page title) is removed because it appears in every passage and can make unsupported facts seem more relevant. Second, IDF is calculated using all 1{,}562 unique passages instead of just the 2--5 passages available for each fact. These changes work better together. Using global IDF alone slightly reduces accuracy because rare names receive higher weights. However, removing subject names first gives the best overall result.
 
 \begin{table}[H]
 \centering
@@ -270,7 +269,7 @@ sentence &            & global & 0.494 & 0.792 & 0.751 \\
 % ---------------------------------------------------------------------
 \subsection{Comparison and final model}
 \label{sec:p1final}
-Table~\ref{tab:methods} compares each member's best configuration. IDF-weighted recall with name removal and global IDF is the most accurate, so it is the \texttt{WordRecallThresholdFactChecker} in \texttt{factcheck.py}.
+The below table compares each member's best configuration. IDF-weighted recall with name removal and global IDF is the most accurate, so it is the \texttt{WordRecallThresholdFactChecker} in \texttt{factcheck.py}.
 
 \begin{table}[H]
 \centering
@@ -436,7 +435,7 @@ NS & 0.843 & 0.890 & 0.866 \\
 \end{table}
 
 % \paragraph{Efficiency and memory.} Inference runs under \texttt{torch.no\_grad()} in batches of 16 (inputs truncated to 512 tokens), tensors are freed after each batch, and a fact is predicted S as soon as a batch reaches $\theta$ (early exit). Table~\ref{tab:runtime} compares full runs with and without pruning (MacBook Air, CPU only). Pruning makes prediction 21\% faster and removes 7 false positives while adding 2 false negatives; peak memory stays below 1.7\,GB.
-\paragraph{Efficiency and memory:} The model runs inference using \texttt{torch.no\_grad()} with batches of 16, and inputs are limited to 512 tokens. Tensors are cleared after each batch, and a fact is classified as S as soon as its score reaches $\theta$ (early exit). Table~\ref{tab:runtime} compares the full model runs with and without pruning on a CPU-only MacBook Air. Pruning reduces prediction time by 21\%, removes 7 false positives and adds 2 false negatives. Peak memory usage remains below 1.7\,GB.
+\paragraph{Efficiency and memory:} The model runs inference using \texttt{torch.no\_grad()} with batches of 16, and inputs are limited to 512 tokens. Tensors are cleared after each batch, and a fact is classified as S as soon as its score reaches $\theta$ (early exit). The table below compares the full model runs with and without pruning on a CPU-only MacBook Air. Pruning reduces prediction time by 21\%, removes 7 false positives and adds 2 false negatives. Peak memory usage remains below 1.7\,GB.
 
 \begin{table}[H]
 \centering
@@ -538,20 +537,21 @@ D & Different wording, made worse by pruning & The fact and evidence use differe
 \begin{table}[H]
 \centering
 \label{tab:fps}
-\begin{tabularx}{\linewidth}{l Y c c c}
+\small
+\begin{tabularx}{\linewidth}{l L{4.6cm} c c c Y}
 \toprule
-\# & Fact & Gold & $P(E)$ & Cat. \\
+\# & Fact & Gold & $P(E)$ & Cat. & Reason \\
 \midrule
-FP1 & Cleveland is in Ohio. & IR & 0.993 & B \\
-FP2 & She transitioned to acting. & NS & 0.812 & B \\
-FP3 & Itakura has represented Japan at the Under-19-level. & NS & 0.513 & A \\
-FP4 & Trivisonno worked at WMMS. & NS & 0.965 & A \\
-FP5 & Trivisonno worked at WKNR. & NS & 0.993 & A \\
-FP6 & She has worked with a number of organizations. & NS & 0.924 & B \\
-FP7 & He has worked as a researcher at various organizations. & NS & 0.938 & B \\
-FP8 & Mayo Clinic is an organization. & NS & 0.888 & B \\
-FP9 & He has worked at Mayo Clinic. & NS & 0.709 & A \\
-FP10 & Jidenna's music is a fusion of hip-hop. & NS & 0.857 & B \\
+FP1 & Cleveland is in Ohio. & IR & 0.993 & B & General knowledge rather than a fact about the subject; the passage only says ``East Cleveland, Ohio''. \\
+FP2 & She transitioned to acting. & NS & 0.812 & B & The passage says she was an actress, but there is no earlier career for her to transition from. \\
+FP3 & Itakura has represented Japan at the Under-19-level. & NS & 0.513 & A & The passage says he was called up to the U-20 team, not the U-19 team. \\
+FP4 & Trivisonno worked at WMMS. & NS & 0.965 & A & WMMS is never mentioned; the best premise is about him calling a show on WTAM. \\
+FP5 & Trivisonno worked at WKNR. & NS & 0.993 & A & WKNR was the rival station his show competed against, not where he worked. \\
+FP6 & She has worked with a number of organizations. & NS & 0.924 & B & Vague claim; the premise mentions sessions for doctors and police, not organisations she worked with. \\
+FP7 & He has worked as a researcher at various organizations. & NS & 0.938 & B & Vague claim; the premise only names one lab and one company role. \\
+FP8 & Mayo Clinic is an organization. & NS & 0.888 & B & General knowledge; the passage only mentions it as the place where he studied. \\
+FP9 & He has worked at Mayo Clinic. & NS & 0.709 & A & He studied at the Mayo Clinic (degree), but the passage never says he worked there. \\
+FP10 & Jidenna's music is a fusion of hip-hop. & NS & 0.857 & B & No genre is mentioned; the premise is about a rap award nomination. \\
 \bottomrule
 \end{tabularx}
 \caption{The 10 false positives examined (predicted S). $P(E)$ is the highest entailment probability over all premises.}
@@ -560,20 +560,21 @@ FP10 & Jidenna's music is a fusion of hip-hop. & NS & 0.857 & B \\
 \begin{table}[H]
 \centering
 \label{tab:fns}
-\begin{tabularx}{\linewidth}{l Y c c c}
+\small
+\begin{tabularx}{\linewidth}{l L{4.6cm} c c c Y}
 \toprule
-\# & Fact & $P(E)$ & Pruned & Cat. \\
+\# & Fact & $P(E)$ & Pruned & Cat. & Reason \\
 \midrule
-FN1 & Gerhard Fischer is best known for inventing a metal detector. & 0.011 & no & D \\
-FN2 & Gerhard Fischer invented the first handheld, battery-operated metal detector. & 0.005 & no & D \\
-FN3 & Jean Daullé was known for his portraits. & 0.076 & no & B \\
-FN4 & The Taker trilogy is a novel by Katsu. & 0.050 & no & C \\
-FN5 & The Hunger is a novel by Katsu. & 0.006 & no & C \\
-FN6 & He served for many years as a pastor. & 0.024 & no & C \\
-FN7 & Hibo Wardere is based in the United Kingdom. & (0.999) & yes & D \\
-FN8 & With CSKA, he won domestic titles. & 0.035 & no & C \\
-FN9 & Florencia Bertotti is an Argentinian. & (0.993) & yes & D \\
-FN10 & ``New Heart.'' is popular. & 0.217 & no & B \\
+FN1 & Gerhard Fischer is best known for inventing a metal detector. & 0.011 & no & D & The best evidence spells the name ``Fisher''. \\
+FN2 & Gerhard Fischer invented the first handheld, battery-operated metal detector. & 0.005 & no & D & The evidence says ``first patented by Dr.\ Gerhard Fisher''. \\
+FN3 & Jean Daullé was known for his portraits. & 0.076 & no & B & The passage says he ``engraved several portraits'', not that he was known for them. \\
+FN4 & The Taker trilogy is a novel by Katsu. & 0.050 & no & C & The titles only appear in a bibliography list. \\
+FN5 & The Hunger is a novel by Katsu. & 0.006 & no & C & The title only appears in a bibliography list. \\
+FN6 & He served for many years as a pastor. & 0.024 & no & C & The support is a broken sentence (``Malcolm a pastor of \dots''). \\
+FN7 & Hibo Wardere is based in the United Kingdom. & (0.999) & yes & D & The evidence says ``London, England''; the fact was pruned. \\
+FN8 & With CSKA, he won domestic titles. & 0.035 & no & C & The titles only appear in an honours list. \\
+FN9 & Florencia Bertotti is an Argentinian. & (0.993) & yes & D & The evidence says ``Argentine''; the fact was pruned. \\
+FN10 & ``New Heart.'' is popular. & 0.217 & no & B & The drama is listed, but the passage never says it was popular. \\
 \bottomrule
 \end{tabularx}
 \caption{The 10 false negatives examined (gold S, predicted NS). For pruned facts, $P(E)$ in brackets is the score the model would have given had the fact not been pruned.}
@@ -684,7 +685,7 @@ Total & 10 & 10 & 20 \\
 \paragraph{Limitations of this analysis:} All errors were categorised by a single annotator, with each error assigned to only one category, even though some may have multiple causes. The number of examples is also small, so the percentages should be treated as general trends rather than exact estimates.
 
 
-\paragraph{Possible improvements.}
+\paragraph{Possible improvements:}
 \begin{itemize}
 \item \textbf{Category D:} normalise surface forms before pruning (map demonyms such as \emph{Argentinian} to \emph{Argentina}, fuzzy-match names such as \emph{Fischer}/\emph{Fisher}), or prune only when the overlap score is very low.
 \item \textbf{Category C:} turn list and table items into sentences before running NLI, for example by attaching the section header and page subject (``Katsu's standalone novels include The Hunger'').
