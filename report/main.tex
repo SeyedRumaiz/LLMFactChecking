@@ -201,7 +201,7 @@ Cosine     & sentence & 1   &            &            & 0.288 & 0.701 & 0.730 & 
 Cosine     & sentence & 1+2 &            &            & 0.144 & 0.692 & 0.667 & 0.786 & 0.721 \\
 \bottomrule
 \end{tabular}
-\caption{Ablation results on the dev set ($n=221$), with a separately tuned $\theta$ for each row. P/R/F1 refer to the S class.}
+\caption{Ablation results on the dev set.}
 \end{table}
 
 \newpage
@@ -232,7 +232,7 @@ sentence &            & global & 0.494 & 0.792 & 0.751 \\
 
 \begin{figure}[H]
 \centering
-\safefig{0.55\linewidth}{figures/part1_scorer.png}
+\safefig{0.6\linewidth}{figures/part1_scorer.png}
 \caption{The final IDF-recall scorer applied to an example fact.}
 \label{fig:p1scorer}
 \end{figure}
@@ -286,7 +286,7 @@ ROUGE-1 recall & Dion & 0.819 & 0.783 \\
 \textbf{IDF-recall + name removal + global IDF} & Rumaiz & \textbf{0.878} & \textbf{0.869} \\
 \bottomrule
 \end{tabular}
-\caption{Best configuration of each word-overlap method (dev accuracy, $n=221$). CV is 5-fold cross-validation; Dion's ROUGE/BLEU use folds grouped by biography.}
+\caption{Best configuration of each word-overlap method. CV is 5-fold cross-validation; Dion's ROUGE/BLEU use folds grouped by biography.}
 \end{table}
 
 \noindent The final threshold is set to $\theta = 0.457$, which falls within a stable range where accuracy remains at or above 85\% for values between $0.43$ and $0.53$. In comparison, cosine similarity has a much narrower peak (Figure~\ref{fig:p1}).
@@ -542,16 +542,16 @@ D & Different wording, made worse by pruning & The fact and evidence use differe
 \toprule
 \# & Fact & Gold & $P(E)$ & Cat. & Reason \\
 \midrule
-FP1 & Cleveland is in Ohio. & IR & 0.993 & B & General knowledge rather than a fact about the subject; the passage only says ``East Cleveland, Ohio''. \\
+FP1 & Cleveland is in Ohio. & IR & 0.993 & B & This is general knowledge rather than a fact about the subject. The passage only says ``East Cleveland, Ohio''. \\
 FP2 & She transitioned to acting. & NS & 0.812 & B & The passage says she was an actress, but there is no earlier career for her to transition from. \\
 FP3 & Itakura has represented Japan at the Under-19-level. & NS & 0.513 & A & The passage says he was called up to the U-20 team, not the U-19 team. \\
-FP4 & Trivisonno worked at WMMS. & NS & 0.965 & A & WMMS is never mentioned; the best premise is about him calling a show on WTAM. \\
+FP4 & Trivisonno worked at WMMS. & NS & 0.965 & A & WMMS is never mentioned. The best premise is about him calling a show on WTAM. \\
 FP5 & Trivisonno worked at WKNR. & NS & 0.993 & A & WKNR was the rival station his show competed against, not where he worked. \\
-FP6 & She has worked with a number of organizations. & NS & 0.924 & B & Vague claim; the premise mentions sessions for doctors and police, not organisations she worked with. \\
-FP7 & He has worked as a researcher at various organizations. & NS & 0.938 & B & Vague claim; the premise only names one lab and one company role. \\
-FP8 & Mayo Clinic is an organization. & NS & 0.888 & B & General knowledge; the passage only mentions it as the place where he studied. \\
+FP6 & She has worked with a number of organizations. & NS & 0.924 & B & This is a vague claim, the premise mentions sessions for doctors and police, not organisations she worked with. \\
+FP7 & He has worked as a researcher at various organizations. & NS & 0.938 & B & Also a vague claim, the premise only names one lab and one company role. \\
+FP8 & Mayo Clinic is an organization. & NS & 0.888 & B & This is general knowledge, the passage only mentions it as the place where he studied. \\
 FP9 & He has worked at Mayo Clinic. & NS & 0.709 & A & He studied at the Mayo Clinic (degree), but the passage never says he worked there. \\
-FP10 & Jidenna's music is a fusion of hip-hop. & NS & 0.857 & B & No genre is mentioned; the premise is about a rap award nomination. \\
+FP10 & Jidenna's music is a fusion of hip-hop. & NS & 0.857 & B & No genre is mentioned, and the premise is about a rap award nomination. \\
 \bottomrule
 \end{tabularx}
 \caption{The 10 false positives examined (predicted S). $P(E)$ is the highest entailment probability over all premises.}
@@ -571,9 +571,9 @@ FN3 & Jean Daullé was known for his portraits. & 0.076 & no & B & The passage s
 FN4 & The Taker trilogy is a novel by Katsu. & 0.050 & no & C & The titles only appear in a bibliography list. \\
 FN5 & The Hunger is a novel by Katsu. & 0.006 & no & C & The title only appears in a bibliography list. \\
 FN6 & He served for many years as a pastor. & 0.024 & no & C & The support is a broken sentence (``Malcolm a pastor of \dots''). \\
-FN7 & Hibo Wardere is based in the United Kingdom. & (0.999) & yes & D & The evidence says ``London, England''; the fact was pruned. \\
+FN7 & Hibo Wardere is based in the United Kingdom. & (0.999) & yes & D & The evidence says ``London, England'', so the fact was pruned. \\
 FN8 & With CSKA, he won domestic titles. & 0.035 & no & C & The titles only appear in an honours list. \\
-FN9 & Florencia Bertotti is an Argentinian. & (0.993) & yes & D & The evidence says ``Argentine''; the fact was pruned. \\
+FN9 & Florencia Bertotti is an Argentinian. & (0.993) & yes & D & The evidence says ``Argentine'', thus the the fact was pruned. \\
 FN10 & ``New Heart.'' is popular. & 0.217 & no & B & The drama is listed, but the passage never says it was popular. \\
 \bottomrule
 \end{tabularx}
@@ -617,13 +617,13 @@ Total & 10 & 10 & 20 \\
 % \end{itemize}
 \noindent The main findings are:
 \begin{itemize}
-\item \textbf{False positives are mainly caused by similar topics being mistaken for evidence:} All 10 FPs fall into categories A and B, and 9 have $P(E) > 0.70$. This shows that the model can be confidently wrong when the evidence discusses the right person or topic but does not actually support the claim.
+\item \textbf{False positives are mainly caused by similar topics being mistaken for evidence:} All 10 FPs fall into categories A and B, and 9 of them have $P(E) > 0.70$. This shows that the model can be confidently wrong when the evidence discusses the right person or topic but does not actually support the claim.
 
 \item \textbf{False negatives are mainly caused by how the evidence is presented:} 8 of the 10 FNs fall into categories C and D. In these cases, the fact is true, but the evidence appears in a list, uses different wording or is removed before reaching the model. Of the 8 FNs that reached the model, 7 had $P(E) < 0.1$, well below the threshold $\theta$.
 
 \item \textbf{The two types of errors are clearly separated:} None of the examined errors had a score close to $\theta$. This means that simply changing the threshold would not fix these errors without introducing new ones.
 
-\item \textbf{Pruning causes a small number of specific errors:} 2 of the 10 FNs (FN7 and FN9) were removed during pruning before reaching the model. Without pruning, both would have been classified as supported, with $P(E) > 0.99$. However, pruning still improves overall performance, increasing accuracy from 84.2\% to 86.4\% while reducing prediction time by 21\% (Table 10).
+\item \textbf{Pruning causes a small number of specific errors:} 2 of the 10 FNs (FN7 and FN9) were removed during pruning before reaching the model. Without pruning, both would have been classified as supported, with $P(E) > 0.99$. However, pruning still improves overall performance, increasing accuracy from 84.2\% to 86.4\% while reducing prediction time.
 \end{itemize}
 
 

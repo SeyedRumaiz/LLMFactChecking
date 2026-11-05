@@ -40,6 +40,7 @@ class EntailmentModel(object):
         self.cuda = cuda
 
 
+    # this is for a single (premise, hypothesis) pair
     def check_entailment(self, premise: str, hypothesis: str):
         """
         Returns the probabilities for one (premise, hylpothesis) pair as a numpy array
@@ -202,15 +203,21 @@ class WordRecallThresholdFactChecker(FactChecker):
                 df.update(d)
             local_idf = {t: log((len(docs) + 1) / (c + 1)) + 1.0 for t, c in df.items()}
 
+        # Assign weights to each fact term based on its IDF. Rare words have higher weights.
         weights = {t: self.idf(t, local_idf) for t in fact_terms}
+
+        # Calculate the final score.
         total = sum(weights.values())
+        # max since one sentence may provide more evidence even though others dont.
+        # model does not require every sentence to contain the fact.
         return max(sum(weights[t] for t in fact_terms & s) / total for s in sentence_term_sets)
 
+    # straightforward predict.
     def predict(self, fact: str, passages: List[dict]) -> str:
         return "S" if self.score(fact, passages) >= self.threshold else "NS"
 
 
-
+# NLI model can understand semantic relationship between 2 sentences.
 class EntailmentFactChecker(FactChecker):
     """
     Textual entailment with DeBERTa-v3 (MNLI + FEVER + ANLI), Part 2 final model.
@@ -225,16 +232,28 @@ class EntailmentFactChecker(FactChecker):
     Tuned on dev: prune_threshold = 0.1, threshold = 0.325 -> ~86.4% (5-fold CV ~85.5%).
     """
 
-    def __init__(self, ent_model, threshold: float = 0.325, prune_threshold: float = 0.0, batch_size: int = 16):
+    def __init__(self, ent_model, threshold: float = 0.325, prune_threshold: float = 0.1, batch_size: int = 16):
         self.ent_model = ent_model
-        self.threshold = threshold
-        self.prune_threshold = prune_threshold
-        self.batch_size = batch_size
-        self.overlap_checker = WordRecallThresholdFactChecker()   # Part 1 scorer, reused for pruning
+        self.threshold = threshold  # minimum entailment probability to predict S.
+        self.prune_threshold = prune_threshold  # minimum word-overlap score required to run DeBERTa.
+        self.batch_size = batch_size    # number of premise-hypothesis pairs processed together.
+        self.overlap_checker = WordRecallThresholdFactChecker()   # Part 1 scorer, reused for pruning  
+
+        # Because word overlap can quickly identify facts that have almost no matching words in the evidence.
+        # There's no need to waste time running the much heavier DeBERTa model on those facts.
+        # So this is called pruning.
 
     @staticmethod
     def split_passage(text: str) -> List[str]:
-        """Split on the <s>...</s> markers, then on sentence punctuation. Drop tiny fragments."""
+        """Split on the <s>...</s> markers, then on sentence punctuation. Drop tiny fragments.
+        
+        This splits the evidence into sentences.
+
+        It performs two splitting operations:
+            1. Splits using <s> and </s> tags.
+            2. Splits using sentence punctuation.
+        Then it removes very short fragments containing fewer than three words. (since they usually provide little useful evidence).
+        """
         sentences = []
         for chunk in re.split(r"</?s>", text):
             chunk = chunk.strip()
