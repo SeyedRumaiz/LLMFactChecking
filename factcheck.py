@@ -14,6 +14,7 @@ from nltk.stem import PorterStemmer
 from spacy.lang.en.stop_words import STOP_WORDS
 
 
+# one training or testing example
 class FactExample(object):
     """
     :param fact: A string representing the fact to make a prediction on
@@ -33,11 +34,12 @@ class FactExample(object):
         return repr("fact=" + repr(self.fact) + "; label=" + repr(self.label) + "; passages=" + repr(self.passages))
 
 
+# actual DeBERTA-v3 model (NLI)
 class EntailmentModel(object):
     def __init__(self, model, tokenizer, cuda=False):
-        self.model = model
-        self.tokenizer = tokenizer
-        self.cuda = cuda
+        self.model = model  # pre trained model
+        self.tokenizer = tokenizer  # converts text into numbers for the model
+        self.cuda = cuda    # whether gpu processing is enabled
 
 
     # this is for a single (premise, hypothesis) pair
@@ -46,9 +48,12 @@ class EntailmentModel(object):
         Returns the probabilities for one (premise, hylpothesis) pair as a numpy array
         [P(entailment), P(neutral), P(contradiction)].
         """
+        # calls check_entailment_batch. converts the individual inputs into lists
+        # containing one item each
         return self.check_entailment_batch([premise], [hypothesis])[0]
 
 
+    # actual model prediction
     def check_entailment_batch(self, premises: List[str], hypotheses: List[str]):
         """
         Batched version: returns an (n, 3) numpy array of [P(entailment), P(neutral), P(contradiction)].
@@ -56,6 +61,9 @@ class EntailmentModel(object):
         """
         with torch.no_grad():
             # tokenize the premise and hypothesis pairs
+            # convert text into numerical representations
+
+            # truncation so cut text if exceeds max length
             inputs = self.tokenizer(premises, hypotheses, return_tensors='pt',
                                     truncation=True, max_length=512, padding=True)
 
@@ -101,6 +109,8 @@ class AlwaysEntailedFactChecker(FactChecker):
         return "S"
 
 
+# actual fact-checking model - uses IDEF-weighted word recall
+# to check if a fact is supported by the evidence in the passages
 class WordRecallThresholdFactChecker(FactChecker):
     """
     IDF-weighted word recall (Part 1 final model).
@@ -123,12 +133,16 @@ class WordRecallThresholdFactChecker(FactChecker):
     PASSAGES_PATH = "data/passages_bm25_ChatGPT_humfacts.jsonl"
 
     def __init__(self, threshold: float = 0.457, passages_path: str = PASSAGES_PATH):
-        self.threshold = threshold
+        self.threshold = threshold  # decision boundary
         self.stemmer = PorterStemmer()
-        self.stopwords = set(STOP_WORDS) - self.NEGATION_WORDS  # common words to ignore
+        self.stopwords = set(STOP_WORDS) - self.NEGATION_WORDS  # common words to remove. negation words preserved.
+
+        # build a dictionary that assigns importance weights to words across
+        # the entire retrieval corpus
         self.global_idf = self._build_global_idf(passages_path) # dictionary of word importances
 
     def tokenize(self, text: str) -> list[str]:
+        # clean the text and converts into useful words.
         text = text.lower()
         text = re.sub(r"<[^>]+>", " ", text)    # strip <s> tags
         text = re.sub(r"[^a-z0-9\s]", " ", text)  # keep letters and digits (years)
@@ -148,25 +162,39 @@ class WordRecallThresholdFactChecker(FactChecker):
         Smoothed IDF over every unique passage in the retrieval corpus (no labels used).
         """
 
-        if not Path(path).exists():
+        if not Path(path).exists(): # if file doesnt exist
             return None
+
+        # read the passages
+        # set since IDF should count whether a word appears in a pssage.
+        # not how many times it appears in that passage
         unique_passages = {}
 
         with open(path, "r", encoding="utf-8") as f:
+            # read JSONL line by line
             for line in f:
+                # for every passage
                 for p in json.loads(line)["passages"]:
+                    # extact title, text and stores its unique words.
+                    # use a dictionary to avoid duplicate passages
                     unique_passages[(p["title"], p["text"])] = set(self.tokenize(p["text"]))
 
         df = Counter()  # counts number of passages containing each term
+
+        # counts how many unique passages containe ach word.
         for terms in unique_passages.values():
             df.update(terms)
+
+        # calculate IDF
         self.n_docs = len(unique_passages)
 
+        # dictionary contain word importance words.
         return {t: log((self.n_docs + 1) / (c + 1)) + 1.0 for t, c in df.items()}
         
 
 
     def idf(self, term: str, local_idf=None) -> float:
+        # this function retrieves the IDF weight for a word.
         if self.global_idf is not None:
             # Unseen term = appears in 0 documents.
             return self.global_idf.get(term, log(self.n_docs + 1) + 1.0)
@@ -175,6 +203,10 @@ class WordRecallThresholdFactChecker(FactChecker):
 
 
     def score(self, fact: str, passages: List[dict]) -> float:
+        # this function calculates how strongly the evidence supports the fact based
+        # on overlap
+
+        # extract words from the fact
         fact_terms = set(self.tokenize(fact))
 
         # Remove subject-name terms taken from the page title.
@@ -183,18 +215,26 @@ class WordRecallThresholdFactChecker(FactChecker):
             content_terms = fact_terms - set(self.tokenize(title))
             if content_terms:            # keep the name if it's all the fact contains
                 fact_terms = content_terms
+
+        # handle empty facts
         if not fact_terms:
             return 0.0
 
+        # extract sentences from all passages
         sentence_term_sets = []
         for p in passages:
+            # go through every passage and split into sentences
             for sent in self.split_into_sentences(p.get("text", "") or ""):
+
+                # tokenize each sentence
                 terms = set(self.tokenize(sent))
                 if terms:
+                    # store the words in a set
                     sentence_term_sets.append(terms)
         if not sentence_term_sets:
             return 0.0
 
+        # local idf if necessary
         local_idf = None
         if self.global_idf is None:     # fallback: IDF over [fact] + this fact's sentences
             docs = [fact_terms] + sentence_term_sets
@@ -204,6 +244,7 @@ class WordRecallThresholdFactChecker(FactChecker):
             local_idf = {t: log((len(docs) + 1) / (c + 1)) + 1.0 for t, c in df.items()}
 
         # Assign weights to each fact term based on its IDF. Rare words have higher weights.
+        # every word in the fact receives an importance weight. rare words have higher importance
         weights = {t: self.idf(t, local_idf) for t in fact_terms}
 
         # Calculate the final score.
@@ -286,7 +327,11 @@ class EntailmentFactChecker(FactChecker):
         # Run the model in small batches; stop early once any premise entails the fact.
         for start in range(0, len(premises), self.batch_size):
             batch = premises[start:start + self.batch_size]
+
+            # each premise is compared against the same fact
             probs = self.ent_model.check_entailment_batch(batch, [fact] * len(batch))
+
+            # find highest entailment probability
             best_entailment = float(probs[:, 0].max())     # column 0 = P(entailment)
             del probs
             if best_entailment >= self.threshold:
