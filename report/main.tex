@@ -323,8 +323,6 @@ Leaving the stop words in scores 159/221 (0.719) on the full set and 131/221 (0.
 
 \begin{table}[H]
 \centering
-\caption{Dion: Part 1 choices}
-\label{tab:p1choices}
 {\footnotesize
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}cccccrrrr@{}}
@@ -339,6 +337,8 @@ Stop & Stem & Title & Segmentation & Dev.\ accuracy & Held-out accuracy & P & R 
 \bottomrule
 \end{tabular}}
 }
+\caption{Dion: Part 1 choices}
+\label{tab:p1choices}
 \end{table}
 
 \begin{figure}[H]
@@ -372,8 +372,6 @@ The same tokens were scored with the other overlap measures. Precision divides b
 
 \begin{table}[H]
 \centering
-\caption{Dion: Other overlap scores}
-\label{tab:rouge}
 \small
 \begin{tabular}{@{}lrr@{}}
 \toprule
@@ -385,6 +383,8 @@ ROUGE-L recall & 179/221 (0.810) & 175/221 (0.792) \\
 ROUGE-1 recall & \textbf{183/221 (0.828)} & \textbf{178/221 (0.805)} \\
 \bottomrule
 \end{tabular}
+\caption{Dion: Other overlap scores}
+\label{tab:rouge}
 \end{table}
 
 At the cut of \(3/7\), the checker records the following.
@@ -567,8 +567,6 @@ window & threshold on max $[P(E)-P(C)]$ & 0.303 & 0.837 \\
 
 \begin{table}[H]
 \centering
-\caption{Fact-level pruning with the Part~1 score (window premise, max $P(E)$). ``S lost'' counts supported facts wrongly pruned.}
-\label{tab:pruning}
 \begin{tabular}{cccccc}
 \toprule
 $\tau$ & Facts pruned & S lost & Calls skipped & $\theta$ & Accuracy \\
@@ -581,6 +579,8 @@ $\tau$ & Facts pruned & S lost & Calls skipped & $\theta$ & Accuracy \\
 0.30 & 83 & 11 & 33.1\% & 0.027 & 0.860 \\
 \bottomrule
 \end{tabular}
+\caption{Fact-level pruning with the Part~1 score (window premise, max $P(E)$). ``S lost'' counts supported facts wrongly pruned.}
+\label{tab:pruning}
 \end{table}
 
 % \noindent Pruning \textbf{improves both speed and accuracy}: facts with almost no word overlap are nearly always unsupported, and removing them removes false positives. Above $\tau \approx 0.15$ more supported facts are lost, so $\tau = 0.1$ is used. Pruning individual \emph{sentences} instead hurts (84.2\% $\rightarrow$ 82.4\%), because pronoun sentences have low overlap but are the evidence the model needs.
@@ -627,8 +627,6 @@ There are 1976 premises before the gate. A cap of 8 already scores 186/221 on 60
 
 \begin{table}[H]
 \centering
-\caption{Dion: Part 2 premise counts}
-\label{tab:premcounts}
 \small
 \begin{tabular}{@{}lr@{}}
 \toprule
@@ -644,6 +642,8 @@ Premises before the gate & 1976 \\
 Title prefixes & 1006 \\
 \bottomrule
 \end{tabular}
+\caption{Dion: Part 2 premise counts}
+\label{tab:premcounts}
 \end{table}
 
 \paragraph{Word-overlap pruning:}
@@ -654,8 +654,6 @@ No skip scores 179/221 (0.810) and sends all 1976 premises. A gate of 0.15 score
 
 \begin{table}[H]
 \centering
-\caption{Dion: Overlap gate}
-\label{tab:prune}
 \small
 \begin{tabular}{@{}lrrrrrr@{}}
 \toprule
@@ -666,6 +664,8 @@ Overlap & 0.150 & 0.837 & 0.888 & 0.777 & 0.829 & 851 \\
 Overlap & 0.300 & \textbf{0.842} & 0.914 & 0.759 & 0.829 & 627 \\
 \bottomrule
 \end{tabular}
+\caption{Dion: Overlap gate}
+\label{tab:prune}
 \end{table}
 
 \paragraph{Scoring:}
@@ -686,8 +686,6 @@ The checker predicts supported when \(s(f)\) is at least 0.25, and not supported
 
 \begin{table}[H]
 \centering
-\caption{Dion: Part 2 score}
-\label{tab:p2score}
 \small
 \begin{tabular}{@{}lr@{}}
 \toprule
@@ -705,6 +703,8 @@ Held-out accuracy & 182/221 (0.824) \\
 Target & 0.83 \\
 \bottomrule
 \end{tabular}
+\caption{Dion: Part 2 score}
+\label{tab:p2score}
 \end{table}
 
 \paragraph{Decision rules:}
@@ -713,8 +713,6 @@ The three rules use the same premises, the same gate of 0.30, and the same cap o
 
 \begin{table}[H]
 \centering
-\caption{Dion: Decision rules}
-\label{tab:rules}
 {\footnotesize
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}lcccccc@{}}
@@ -727,6 +725,8 @@ Highest-overlap label & & 0.778 & & 0.909 & 0.625 & 0.741 \\
 \bottomrule
 \end{tabular}}
 }
+\caption{Dion: Decision rules}
+\label{tab:rules}
 \end{table}
 
 \paragraph{Premise choices:}
@@ -735,8 +735,6 @@ A blank cell means that kind of premise is off. Every row in Table~\ref{tab:kind
 
 \begin{table}[H]
 \centering
-\caption{Dion: Premise kinds}
-\label{tab:kinds}
 {\footnotesize
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}ccccrrrrr@{}}
@@ -751,6 +749,8 @@ Sentence & Pair & Passage & Cap & Accuracy & P & R & F1 & Pairs \\
 \bottomrule
 \end{tabular}}
 }
+\caption{Dion: Premise kinds}
+\label{tab:kinds}
 \end{table}
 
 \begin{figure}[H]
