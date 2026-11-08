@@ -4,5 +4,4 @@ __pycache__/
 *.pyc
 .env
 .DS_STORE
-.ipynb_checkpoints/__pycache__/
-*.pyc
+.ipynb_checkpoints/
