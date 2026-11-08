@@ -1,0 +1,1 @@
+This file contains both part 1 and 2. Additionally this explores how to achieve the highest average accuracy for the listed metrics in the cw. I will include the new metric that will be more relevant to the cw in the next upload 

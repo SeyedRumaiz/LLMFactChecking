@@ -1,5 +1,7 @@
 .venv/
+.venv310/
 __pycache__/
 *.pyc
 .env
 .DS_STORE
+.ipynb_checkpoints/
