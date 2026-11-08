@@ -224,7 +224,7 @@ FN5 & The Hunger is a novel by Katsu. & 0.006 & no & C & The title only appears 
 FN6 & He served for many years as a pastor. & 0.024 & no & C & The support is a broken sentence (``Malcolm a pastor of \dots''). \\
 FN7 & Hibo Wardere is based in the United Kingdom. & (0.999) & yes & D & The evidence says ``London, England'', so the fact was pruned. \\
 FN8 & With CSKA, he won domestic titles. & 0.035 & no & C & The titles only appear in an honours list. \\
-FN9 & Florencia Bertotti is an Argentinian. & (0.993) & yes & D & The evidence says ``Argentine'', thus the the fact was pruned. \\
+FN9 & Florencia Bertotti is an Argentinian. & (0.993) & yes & D & The evidence says ``Argentine'', so the fact was pruned. \\
 FN10 & ``New Heart.'' is popular. & 0.217 & no & B & The drama is listed, but the passage never says it was popular. \\
 \bottomrule
 \end{tabularx}
@@ -301,7 +301,7 @@ Total & 10 & 10 & 20 \\
 \item[(c)] \textbf{Predicted:} NS (pruned; the model was never run)
 \item[(d)] \textbf{Category:} D
 % \item[(e)] \textbf{Why it was wrong:} The word-overlap score ignores the subject's name, so the only remaining content word is \emph{argentinian}. After stemming it does not match \emph{argentine} (stem \emph{argentin}), the score is 0, and the fact is pruned. The cached model output for the same evidence gives $P(E) = 0.993$, so this error comes entirely from the lexical pruning step and not from the NLI model (Figure~\ref{fig:prunetrace}).
-\item[(e)] \textbf{Why it was wrong:} The word-overlap score does not consider the subject's name, leaving \emph{argentinian} as the only content word. After stemming, it still does not match \emph{argentine} (stemmed as \emph{argentin}), resulting in a score of 0 and causing the fact to be pruned. However, the cached model output for the same evidence gives $P(E) = 0.993$. This shows that the error comes from the lexical pruning step rather than the NLI model (Figure~\ref{fig:prunetrace}).
+\item[(e)] \textbf{Why it was wrong:} The word-overlap score does not consider the subject's name, leaving \emph{argentinian} as the only content word. After stemming, it still does not match \emph{argentine} (stemmed as \emph{argentin}), resulting in a score of 0 and causing the fact to be pruned. However, the cached model output for the same evidence gives $P(E) = 0.993$, so the error comes from the lexical pruning step rather than the NLI model (Figure~\ref{fig:prunetrace}).
 \end{itemize}
 
 \begin{figure}[H]
