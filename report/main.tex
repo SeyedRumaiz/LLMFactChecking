@@ -132,16 +132,12 @@
 % is chosen in "Comparison and final model".
 % =====================================================================
 \newpage
-\section{Part 1: Word Overlap}
-\label{sec:part1}
-\subsection{Overview and evaluation protocol}
+\section{Introduction and Data}
 \label{sec:intro}
-The data comes from FActScore \citep{min2023factscore}. Each ChatGPT biography is split into short facts, and each fact is checked against Wikipedia passages. Facts are labelled \textbf{S} (supported), \textbf{NS} (not supported) or \textbf{IR} (irrelevant); IR is counted as NS.
+In Part~1, an IDF-weighted word-recall classifier removes subject names and calculates IDF across the full corpus. It achieves an accuracy of \textbf{87.8\%}, with 86.9\% in 5-fold cross-validation, exceeding the 75\% target. Part~2 uses a DeBERTa-v3 NLI model with two-sentence premise windows and word-overlap pruning. It achieves \textbf{86.4\%} accuracy (85.5\% in 5-fold cross-validation), surpassing the 83\% target while reducing the number of model calls by around 37\%. Part~3 focuses on 10 false positives and 10 false negatives from the entailment model, grouping them into four categories to identify common error patterns.
 
-\medskip
-In Part~1, an IDF-weighted word-recall classifier removes subject names and calculates IDF across the full corpus. It achieves an accuracy of \textbf{87.8\%}, with 86.9\% in 5-fold cross-validation, exceeding the 75\% target. Part~2 uses a DeBERTa-v3 NLI model with two-sentence premise windows and word-overlap pruning. It achieves \textbf{86.4\%} accuracy (85.5\% in 5-fold cross-validation), surpassing the 83\% target while reducing the number of model calls by around 37\%.
+LLMs can produce text that sounds convincing but is not always factually correct. For this task, each ChatGPT-generated biography is broken down into atomic facts, which are then checked against Wikipedia passages \citep{min2023factscore}. Each fact is given a human-assigned label: \textbf{S} (supported), \textbf{NS} (not supported) or \textbf{IR} (irrelevant). In the provided \texttt{factchecking\_main.py}, IR is treated as NS, turning the task into a balanced binary classification problem.
 
-\medskip
 All methods are evaluated in the same way: a fact is classified as S if its score is $\geq \theta$. The threshold $\theta$ is selected by grid search over $[0,1]$ in steps of $0.001$, choosing the value with the highest accuracy. Since tuning and evaluation use the same development set, we also report 5-fold cross-validation accuracy ($\theta$ tuned on 4 folds and tested on the remaining fold, using seed 42), along with how accuracy varies across different threshold values.
 
 \begin{figure}[H]
@@ -151,6 +147,9 @@ All methods are evaluated in the same way: a fact is classified as S if its scor
 \label{fig:overview}
 \end{figure}
 
+\newpage
+\section{Part 1: Word Overlap}
+\label{sec:part1}
 Each group member implemented and tuned a different overlap metric under the evaluation protocol of Section~\ref{sec:intro}. The best-performing method is used in \texttt{factcheck.py} (Section~\ref{sec:p1final}).
 
 % ---------------------------------------------------------------------
@@ -1129,6 +1128,13 @@ Total & 10 & 10 & 20 \\
 \item \textbf{Category A:} check that the fact's relation, not just its entities, appears in the premise, or use a larger NLI model.
 \item \textbf{Category B:} allow an ``unverifiable'' outcome for vague or evaluative facts instead of forcing S or NS.
 \end{itemize}
+
+% =====================================================================
+% CONCLUSION
+% =====================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+A carefully designed lexical baseline (IDF-weighted recall with subject-name removal and corpus-level IDF) reaches 87.8\%, slightly above the neural entailment model (86.4\%) on this small dev set. The two make different kinds of errors: word overlap cannot detect relational mismatches or paraphrase, while the NLI model over-trusts topical similarity and struggles with list-formatted evidence. Combining them, by pruning with word overlap before running entailment, improves both accuracy and efficiency. The error analysis suggests the next gains would come from normalising surface forms before pruning and turning lists into sentences, rather than from further threshold tuning.
 
 % =====================================================================
 % REFERENCES
