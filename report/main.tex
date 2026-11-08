@@ -39,8 +39,6 @@
 \setlength{\textfloatsep}{8pt}
 \setlength{\floatsep}{6pt}
 \setlength{\intextsep}{6pt}
-\usepackage[round]{natbib}
-\renewcommand{\bibname}{References}\renewcommand{\refname}{References}
 \usepackage[hidelinks]{hyperref}
 
 \usepackage{titlesec}
@@ -136,7 +134,7 @@
 \label{sec:intro}
 In Part~1, an IDF-weighted word-recall classifier removes subject names and calculates IDF across the full corpus. It achieves an accuracy of \textbf{87.8\%}, with 86.9\% in 5-fold cross-validation, exceeding the 75\% target. Part~2 uses a DeBERTa-v3 NLI model with two-sentence premise windows and word-overlap pruning. It achieves \textbf{86.4\%} accuracy (85.5\% in 5-fold cross-validation), surpassing the 83\% target while reducing the number of model calls by around 37\%. Part~3 focuses on 10 false positives and 10 false negatives from the entailment model, grouping them into four categories to identify common error patterns.
 
-LLMs can produce text that sounds convincing but is not always factually correct. For this task, each ChatGPT-generated biography is broken down into atomic facts, which are then checked against Wikipedia passages \citep{min2023factscore}. Each fact is given a human-assigned label: \textbf{S} (supported), \textbf{NS} (not supported) or \textbf{IR} (irrelevant). In the provided \texttt{factchecking\_main.py}, IR is treated as NS, turning the task into a balanced binary classification problem.
+LLMs can produce text that sounds convincing but is not always factually correct. For this task, each ChatGPT-generated biography is broken down into atomic facts, which are then checked against Wikipedia passages. The data comes from FActScore\footnote{Paper: \url{https://arxiv.org/abs/2305.14251}; code and data: \url{https://github.com/shmsw25/FActScore}.}. Each fact is given a human-assigned label: \textbf{S} (supported), \textbf{NS} (not supported) or \textbf{IR} (irrelevant). In the provided \texttt{factchecking\_main.py}, IR is treated as NS, turning the task into a balanced binary classification problem.
 
 All methods are evaluated in the same way: a fact is classified as S if its score is $\geq \theta$. The threshold $\theta$ is selected by grid search over $[0,1]$ in steps of $0.001$, choosing the value with the highest accuracy. Since tuning and evaluation use the same development set, we also report 5-fold cross-validation accuracy ($\theta$ tuned on 4 folds and tested on the remaining fold, using seed 42), along with how accuracy varies across different threshold values.
 
@@ -165,7 +163,7 @@ Each group member implemented and tuned a different overlap metric under the eva
 Step & Choice & Reason \\
 \midrule
 Stopwords & spaCy list \emph{minus} negations (\textit{no, not, never, \dots}) & Removes function words that inflate overlap; keeping negations stops ``did \emph{not} win'' matching ``won''. \\
-Stemming & Porter \citep{porter1980} & Matches variants (\textit{acting, acted $\rightarrow$ act}). \\
+Stemming & Porter & Matches variants (\textit{acting, acted $\rightarrow$ act}). \\
 N-grams & Unigrams & Bigrams lowered accuracy (refer below table). \\
 Evidence unit & Sentence or passage & Both evaluated. \\
 \bottomrule
@@ -174,7 +172,7 @@ Evidence unit & Sentence or passage & Both evaluated. \\
 \label{tab:prep}
 \end{table}
 
-\paragraph{Scoring:} Let $F$ represent the terms in a fact and $U$ the terms in an evidence unit. IDF \citep{sparckjones1972} is calculated using the smoothed formula $\mathrm{idf}(t) = \log\frac{N+1}{\mathrm{df}(t)+1} + 1$. The baseline method uses TF-IDF cosine similarity \citep{manning2008}, with log-scaled term frequency and L2-normalised vectors. However, cosine similarity can penalise longer evidence passages for containing words that are not in the fact. Since fact verification mainly focuses on how much of a fact is covered by the evidence, we also use IDF-weighted recall:
+\paragraph{Scoring:} Let $F$ represent the terms in a fact and $U$ the terms in an evidence unit. IDF is calculated using the smoothed formula $\mathrm{idf}(t) = \log\frac{N+1}{\mathrm{df}(t)+1} + 1$. The baseline method uses TF-IDF cosine similarity, with log-scaled term frequency and L2-normalised vectors. However, cosine similarity can penalise longer evidence passages for containing words that are not in the fact. Since fact verification mainly focuses on how much of a fact is covered by the evidence, we also use IDF-weighted recall:
 
 \begin{equation}
 \mathrm{score}(f) = \max_{U}\ \frac{\sum_{t \in F \cap U} \mathrm{idf}(t)}{\sum_{t \in F} \mathrm{idf}(t)} .
@@ -252,7 +250,7 @@ sentence &            & global & 0.494 & 0.792 & 0.751 \\
 \subsection{ROUGE-1 recall (Dion)}
 \label{sec:p1dion}
 
-ROUGE-1 recall \citep{lin2004} is an overlap metric: the share of a reference text's words that appear in a candidate text.
+ROUGE-1 recall is an overlap metric: the share of a reference text's words that appear in a candidate text.
 
 \paragraph{Text cleaning:}
 
@@ -415,7 +413,7 @@ ROUGE-1 recall is the highest row on the full set and held out. Both clear the t
 % ---------------------------------------------------------------------
 \subsection{Normalised BM25 (Shavindu)}
 \label{sec:p1shavindu}
-Jaccard, TF-IDF cosine and ROUGE were already in use, so this checker uses Okapi BM25 \citep{robertson2009}. The fact is the query and each Wikipedia sentence is a document. The data file is already the output of a BM25 retrieval, which only chooses which paragraphs are available to read. It does not label the fact. The checker below uses BM25 as the label, with a threshold fit on the dev set.
+Jaccard, TF-IDF cosine and ROUGE were already in use, so this checker uses Okapi BM25. The fact is the query and each Wikipedia sentence is a document. The data file is already the output of a BM25 retrieval, which only chooses which paragraphs are available to read. It does not label the fact. The checker below uses BM25 as the label, with a threshold fit on the dev set.
 
 \paragraph{Preprocessing.}
 Tags are stripped, the text is lowercased, and everything that is not a letter or a digit is treated as a space. Years stay as tokens. A fixed list of function words is removed. Negations (\textit{no, not, never, nor}) stay on the list of tokens that are kept, because dropping ``not'' would make a denied claim look like a supported one. The remaining tokens are Porter stemmed. The page title, with any parenthetical such as ``(inventor)'' removed, is tokenised in the same way and those tokens are deleted from the fact. If that deletion leaves nothing, the name is kept, otherwise the score would be zero for a fact that is only a name.
@@ -495,7 +493,7 @@ The below table compares each member's best configuration. IDF-weighted recall w
 \toprule
 Method & Member & Accuracy & CV \\
 \midrule
-Jaccard \citep{jaccard1912} (whole passage, stop+stem) & Tamadhi & 0.701 & -- \\
+Jaccard (whole passage, stop+stem) & Tamadhi & 0.701 & -- \\
 TF-IDF cosine (sentence, stop+stem) & Rumaiz & 0.760 & -- \\
 ROUGE-1 recall (8-token windows) & Dion & 0.828 & 0.805 \\
 BM25 (sentences, $k_1{=}1.2$, $b{=}0.25$) & Shavindu & 0.864 & 0.860 \\
@@ -541,11 +539,11 @@ NS & 0.866 & 0.890 & 0.878 \\
 \label{sec:part2}
 
 \subsection{Model and setup}
-All members use \texttt{MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli} \citep{laurer2024}, a DeBERTa-v3 model \citep{he2023debertav3} fine-tuned on MNLI \citep{williams2018}, FEVER \citep{thorne2018} and ANLI \citep{nie2020}. It produces logits for entailment, neutral and contradiction. These are converted into probabilities using softmax, giving $[P(E), P(N), P(C)]$. A test with three text pairs confirmed that the labels are in the expected order. The fact is used as the hypothesis, while the Wikipedia text serves as the premise.
+All members use \texttt{MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli}, which produces logits for entailment, neutral and contradiction. These are converted into probabilities using softmax, giving $[P(E), P(N), P(C)]$. A test with three text pairs confirmed that the labels are in the expected order. The fact is used as the hypothesis, while the Wikipedia text serves as the premise.
 
 \subsection{Window premises, max $P(E)$ and pruning (Rumaiz)}
 \label{sec:p2rumaiz}
-\paragraph{Passage preprocessing:} Passages are split using \texttt{<s>} markers and sentence punctuation. Extra whitespace is removed, and fragments with fewer than three words (e.g.\ ``Career.'') are discarded. This leaves 5{,}417 premise--fact pairs. Short premises are used because NLI models trained on sentence pairs work better on sentence-sized premises than on whole documents \citep{laban2022}. Model outputs are cached after the first run, allowing different decision rules, thresholds and pruning settings to be tested without running the model again.
+\paragraph{Passage preprocessing:} Passages are split using \texttt{<s>} markers and sentence punctuation. Extra whitespace is removed, and fragments with fewer than three words (e.g.\ ``Career.'') are discarded. This leaves 5{,}417 premise--fact pairs. Model outputs are cached after the first run, allowing different decision rules, thresholds and pruning settings to be tested without running the model again.
 
 \begin{table}[H]
 \centering
@@ -1136,27 +1134,6 @@ Total & 10 & 10 & 20 \\
 \label{sec:conclusion}
 A carefully designed lexical baseline (IDF-weighted recall with subject-name removal and corpus-level IDF) reaches 87.8\%, slightly above the neural entailment model (86.4\%) on this small dev set. The two make different kinds of errors: word overlap cannot detect relational mismatches or paraphrase, while the NLI model over-trusts topical similarity and struggles with list-formatted evidence. Combining them, by pruning with word overlap before running entailment, improves both accuracy and efficiency. The error analysis suggests the next gains would come from normalising surface forms before pruning and turning lists into sentences, rather than from further threshold tuning.
 
-% =====================================================================
-% REFERENCES
-% =====================================================================
-\newpage
-\begin{thebibliography}{99}
-\setlength{\itemsep}{2pt}
-\small
-\bibitem[He et al.(2023)]{he2023debertav3} He, P., Gao, J. and Chen, W. (2023) `DeBERTaV3: Improving DeBERTa using ELECTRA-style pre-training with gradient-disentangled embedding sharing', in \emph{Proceedings of the 11th International Conference on Learning Representations (ICLR 2023)}.
-\bibitem[Jaccard(1912)]{jaccard1912} Jaccard, P. (1912) `The distribution of the flora in the alpine zone', \emph{New Phytologist}, 11(2), pp. 37--50.
-\bibitem[Laban et al.(2022)]{laban2022} Laban, P., Schnabel, T., Bennett, P.N. and Hearst, M.A. (2022) `SummaC: Re-visiting NLI-based models for inconsistency detection in summarization', \emph{Transactions of the Association for Computational Linguistics}, 10, pp. 163--177.
-\bibitem[Laurer et al.(2024)]{laurer2024} Laurer, M., van Atteveldt, W., Casas, A. and Welbers, K. (2024) `Less annotating, more classifying: Addressing the data scarcity issue of supervised machine learning with deep transfer learning and BERT-NLI', \emph{Political Analysis}, 32(1), pp. 84--100.
-\bibitem[Lin(2004)]{lin2004} Lin, C.-Y. (2004) `ROUGE: A package for automatic evaluation of summaries', in \emph{Text Summarization Branches Out}. Barcelona: Association for Computational Linguistics, pp. 74--81.
-\bibitem[Manning et al.(2008)]{manning2008} Manning, C.D., Raghavan, P. and Sch\"utze, H. (2008) \emph{Introduction to Information Retrieval}. Cambridge: Cambridge University Press.
-\bibitem[Min et al.(2023)]{min2023factscore} Min, S., Krishna, K., Lyu, X., Lewis, M., Yih, W., Koh, P.W., Iyyer, M., Zettlemoyer, L. and Hajishirzi, H. (2023) `FActScore: Fine-grained atomic evaluation of factual precision in long form text generation', in \emph{Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing}, pp. 12076--12100.
-\bibitem[Nie et al.(2020)]{nie2020} Nie, Y., Williams, A., Dinan, E., Bansal, M., Weston, J. and Kiela, D. (2020) `Adversarial NLI: A new benchmark for natural language understanding', in \emph{Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics}, pp. 4885--4901.
-\bibitem[Porter(1980)]{porter1980} Porter, M.F. (1980) `An algorithm for suffix stripping', \emph{Program}, 14(3), pp. 130--137.
-\bibitem[Robertson and Zaragoza(2009)]{robertson2009} Robertson, S. and Zaragoza, H. (2009) `The probabilistic relevance framework: BM25 and beyond', \emph{Foundations and Trends in Information Retrieval}, 3(4), pp. 333--389.
-\bibitem[Sp\"arck Jones(1972)]{sparckjones1972} Sp\"arck Jones, K. (1972) `A statistical interpretation of term specificity and its application in retrieval', \emph{Journal of Documentation}, 28(1), pp. 11--21.
-\bibitem[Thorne et al.(2018)]{thorne2018} Thorne, J., Vlachos, A., Christodoulopoulos, C. and Mittal, A. (2018) `FEVER: A large-scale dataset for fact extraction and VERification', in \emph{Proceedings of NAACL-HLT 2018}, pp. 809--819.
-\bibitem[Williams et al.(2018)]{williams2018} Williams, A., Nangia, N. and Bowman, S. (2018) `A broad-coverage challenge corpus for sentence understanding through inference', in \emph{Proceedings of NAACL-HLT 2018}, pp. 1112--1122.
-\end{thebibliography}
 
 \newpage
 \appendix
