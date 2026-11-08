@@ -125,6 +125,12 @@
 \end{center}
 \newpage
 % =====================================================================
+% TABLE OF CONTENTS
+% =====================================================================
+\setcounter{tocdepth}{2}
+\tableofcontents
+\newpage
+% =====================================================================
 % PART 1: WORD OVERLAP (40%)
 % Each member has their own subsection. The final model used in factcheck.py
 % is chosen in "Comparison and final model".
@@ -541,7 +547,7 @@ NS & 0.866 & 0.890 & 0.878 \\
 \subsection{Model and setup}
 All members use \texttt{MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli}, which produces logits for entailment, neutral and contradiction. These are converted into probabilities using softmax, giving $[P(E), P(N), P(C)]$. A test with three text pairs confirmed that the labels are in the expected order. The fact is used as the hypothesis, while the Wikipedia text serves as the premise.
 
-\subsection{Window premises, max $P(E)$ and pruning (Rumaiz)}
+\subsection{Window premises, max \texorpdfstring{$P(E)$}{P(E)} and pruning (Rumaiz)}
 \label{sec:p2rumaiz}
 \paragraph{Passage preprocessing:} Passages are split using \texttt{<s>} markers and sentence punctuation. Extra whitespace is removed, and fragments with fewer than three words (e.g.\ ``Career.'') are discarded. This leaves 5{,}417 premise--fact pairs. Model outputs are cached after the first run, allowing different decision rules, thresholds and pruning settings to be tested without running the model again.
 
