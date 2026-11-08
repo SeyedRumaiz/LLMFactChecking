@@ -1,0 +1,162 @@
+﻿\section{Part 1: ROUGE-1 recall}
+
+ROUGE-1 recall is an overlap metric: the share of a reference text's words that appear in a candidate text.
+
+\subsection{Text cleaning}
+
+Before any token is formed, the fact and each passage are repaired as character strings. Markup or a compatibility character would otherwise become a token or split a name.
+
+\begin{center}
+\small
+\begin{tabular}{@{}llp{7.4cm}@{}}
+\toprule
+Step & Choice & Reason \\
+\midrule
+Unicode & NFKC & Compatibility forms would split a name the page spells as one word. \\
+Entities & HTML unescape & A name left as an entity would not match the same name in the fact. \\
+Markup & Tags become spaces & Wikipedia tags, including sentence markers, are not words. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Preprocessing}
+
+A cleaned string is casefolded and split on Unicode word characters, with underscores excluded. A fixed stop list is removed, and the rest are Porter stemmed. Negations and numerals stay, so ``not'' and a year both survive. Stemming makes an inflection count once.
+
+\begin{center}
+\small
+\begin{tabular}{@{}llp{7.4cm}@{}}
+\toprule
+Step & Choice & Reason \\
+\midrule
+Case & Casefold & Capitalisation should not decide a match. \\
+Split & Unicode word characters & Punctuation and underscores are not part of the overlap. \\
+Stop words & Fixed list removed & Function words do not carry the claim. Negations and numerals stay. \\
+Stem & Porter & Inflections of one word should count as one token. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Keeping the stop list and the stemmer raises held-out accuracy to 0.805. Without the stop list it falls to 0.593, because function words fill the window, and without stemming it falls to 0.774, because separate inflections no longer match.
+
+\subsection{Title filtering}
+
+Each passage title is tokenised in the same way and removed from that passage before the windows are cut. Removing it raises held-out accuracy from 0.719 to 0.805, because the name would otherwise fill the window and hide the predicate.
+
+If that removal leaves no tokens, the score is 0 and the prediction is not supported. ``Rennie Fritchie is a Baroness'' is this case. The title ``Rennie Fritchie, Baroness Fritchie'' contains every content word. The gold label is supported, and no cut repairs a zero.
+
+\subsection{Segmentation}
+
+The remaining tokens are cut into windows of eight, stride four. A passage of eight tokens or fewer is one window. A short remainder is kept as a shorter window, neither padded nor dropped. The fact score is the maximum over windows and passages. One supporting span is enough. A mean over the page would dilute that span. The windows raise held-out accuracy from 0.751 to 0.805, because the fact's words have to sit together rather than match anywhere on the page.
+
+\subsection{Scoring}
+
+Each window is scored by how much of the fact appears in it. \(c_F(g)\) is the count of unigram \(g\) in the fact, and \(c_W(g)\) is its count in the window. A word cannot count more times than it appears in the fact, and the overlap is divided by the length of the fact, not the window. The fact score is the highest of those window scores.
+
+\begin{equation}
+R(F,W)=\frac{\sum_{g}\min\bigl(c_F(g),c_W(g)\bigr)}{\sum_{g}c_F(g)}
+\end{equation}
+
+The cut that gets the most of the 221 facts right is
+
+\[
+\frac{3}{7} = 0.42857142857142855.
+\]
+
+A fact is supported when its highest window score is at least \(3/7\). The highest score is the maximum of \(R(F,W)\) over the windows, so the fact takes the window where the largest share of its words appears.
+
+\subsection{Preprocessing and evidence choices}
+
+Each row turns one submitted choice off and retunes the cut. A blank cell means that switch is off. Development accuracy, held-out accuracy, precision, recall, and F1 are in Table~\ref{tab:p1choices}.
+
+Leaving the stop words in scores 159/221 (0.719) on the full set and 131/221 (0.593) held out. Function words then fill the window, so the stop list stays. The stem row is lower on both columns, so stemming stays. Leaving the title tokens in scores 170/221 (0.769), and precision on the supported class falls to 0.723, because the name matches windows that do not contain the predicate. Scoring the whole passage instead of the windows is the 177/221 (0.801) row, and recall falls to 78/112 (0.696) because the page dilutes the fact. The submitted row is the only one that leads the held-out column.
+
+\begin{table}[H]
+\centering
+\caption{Part 1 choices}
+\label{tab:p1choices}
+{\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}cccccrrrr@{}}
+\toprule
+Stop & Stem & Title & Segmentation & Dev.\ accuracy & Held-out accuracy & P & R & F1 \\
+\midrule
+\ck & \ck & \ck & \ck & \textbf{183/221 (0.828)} & \textbf{0.805} & 0.825 & 0.839 & 0.832 \\
+ & \ck & \ck & \ck & 159/221 (0.719) & 0.593 & 0.719 & 0.732 & 0.726 \\
+\ck & & \ck & \ck & 176/221 (0.796) & 0.774 & 0.813 & 0.777 & 0.795 \\
+\ck & \ck & & \ck & 170/221 (0.769) & 0.719 & 0.723 & 0.884 & 0.795 \\
+\ck & \ck & \ck & & 177/221 (0.801) & 0.751 & 0.886 & 0.696 & 0.780 \\
+\bottomrule
+\end{tabular}}
+}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=6.5mm,
+  box/.style={draw, rounded corners=2pt, align=center, font=\footnotesize, inner sep=3pt, text width=7.4cm, minimum height=7.2mm},
+  arr/.style={-{Stealth[length=2mm]}, thick}
+]
+\node[box, fill=blue!18] (in) {Fact and retrieved passages};
+\node[box, fill=green!25, below=of in] (clean) {NFKC, HTML unescape, strip tags};
+\node[box, fill=orange!30, below=of clean] (tok) {Casefold, drop stop words, Porter stem};
+\node[box, fill=yellow!40, below=of tok] (title) {Remove page-title tokens};
+\node[font=\footnotesize, text=red, anchor=west, align=left, text width=3.5cm] (note) at ($(title.east)+(2mm,0)$) {No tokens left: the score is 0};
+\node[box, fill=blue!18, below=of title] (win) {Windows of 8 tokens, stride 4};
+\node[box, fill=green!25, below=of win] (score) {Maximum ROUGE-1 recall};
+\node[box, fill=orange!30, below=of score] (dec) {Supported if the score is at least 3/7};
+\draw[arr] (in) -- (clean);
+\draw[arr] (clean) -- (tok);
+\draw[arr] (tok) -- (title);
+\draw[arr] (title) -- (win);
+\draw[arr] (win) -- (score);
+\draw[arr] (score) -- (dec);
+\end{tikzpicture}
+\caption{The word-overlap checker scores a fact by the maximum ROUGE-1 recall over 8-token windows and predicts supported when that score is at least 3/7.}
+\end{figure}
+
+\subsection{Comparison}
+
+The same tokens were scored with the other overlap measures. Precision divides by the length of the window, so most of a supporting span is other words. ROUGE-2 needs the same pair of words in order, which a reworded date breaks. ROUGE-L keeps order through the longest common subsequence. ROUGE-1 recall asks only whether the fact's own words appear, and it is the score the checker uses.
+
+\begin{table}[H]
+\centering
+\caption{Other overlap scores}
+\label{tab:rouge}
+\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Score & Full set & Held-out \\
+\midrule
+ROUGE-1 precision & 158/221 (0.715) & \\
+ROUGE-2 recall & 139/221 (0.629) & \\
+ROUGE-L recall & 179/221 (0.810) & 175/221 (0.792) \\
+ROUGE-1 recall & \textbf{183/221 (0.828)} & \textbf{178/221 (0.805)} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At the cut of \(3/7\), the checker records the following.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lr@{}}
+\toprule
+ & Result \\
+\midrule
+Correct & 183/221 (0.828) \\
+Supported facts recovered & 94 of 112 \\
+Supported facts missed & 18 \\
+Negative facts labelled supported & 20 of 109 \\
+Precision & 94/114 (0.825) \\
+Recall & 94/112 (0.839) \\
+F1 & 0.832 \\
+Held-out & 178/221 (0.805) \\
+Target & 0.75 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+ROUGE-1 recall is the highest row on the full set and held out. Both clear the target of 0.75, so it is the score this part submits.
+
