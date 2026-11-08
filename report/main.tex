@@ -224,7 +224,7 @@ FN5 & The Hunger is a novel by Katsu. & 0.006 & no & C & The title only appears 
 FN6 & He served for many years as a pastor. & 0.024 & no & C & The support is a broken sentence (``Malcolm a pastor of \dots''). \\
 FN7 & Hibo Wardere is based in the United Kingdom. & (0.999) & yes & D & The evidence says ``London, England'', so the fact was pruned. \\
 FN8 & With CSKA, he won domestic titles. & 0.035 & no & C & The titles only appear in an honours list. \\
-FN9 & Florencia Bertotti is an Argentinian. & (0.993) & yes & D & The evidence says ``Argentine'', thus the the fact was pruned. \\
+FN9 & Florencia Bertotti is an Argentinian. & (0.993) & yes & D & The evidence says ``Argentine'', so the fact was pruned. \\
 FN10 & ``New Heart.'' is popular. & 0.217 & no & B & The drama is listed, but the passage never says it was popular. \\
 \bottomrule
 \end{tabularx}
@@ -290,7 +290,7 @@ Total & 10 & 10 & 20 \\
 \item[(c)] \textbf{Predicted:} S ($P(E) = 0.993$)
 \item[(d)] \textbf{Category:} A
 % \item[(e)] \textbf{Why it was wrong:} Trivisonno and WKNR appear together in a radio-career context, but WKNR is the \emph{rival} station his show competed against, not his employer. The model rewards the two entities appearing together in the right domain instead of checking the \emph{worked at} relation between them.
-\item[(e)] \textbf{Why it was wrong:} Trivisonno and WKNR are mentioned together in the context of his radio career. However, WKNR was the \emph{rival} station his show competed against, not his employer. The model focuses on the fact that both are mentioned in the same context instead of checking whether the evidence actually supports the \emph{worked at} relationship.
+\item[(e)] \textbf{Why it was wrong:} Trivisonno and WKNR appear together in his radio career, but WKNR was the \emph{rival} station his show competed against, not his employer. The model relies on both being mentioned together instead of checking the \emph{worked at} relationship.
 \end{itemize}
 
 \paragraph{Example 2: surface-form mismatch amplified by pruning (FN9).}
@@ -301,7 +301,7 @@ Total & 10 & 10 & 20 \\
 \item[(c)] \textbf{Predicted:} NS (pruned; the model was never run)
 \item[(d)] \textbf{Category:} D
 % \item[(e)] \textbf{Why it was wrong:} The word-overlap score ignores the subject's name, so the only remaining content word is \emph{argentinian}. After stemming it does not match \emph{argentine} (stem \emph{argentin}), the score is 0, and the fact is pruned. The cached model output for the same evidence gives $P(E) = 0.993$, so this error comes entirely from the lexical pruning step and not from the NLI model (Figure~\ref{fig:prunetrace}).
-\item[(e)] \textbf{Why it was wrong:} The word-overlap score does not consider the subject's name, leaving \emph{argentinian} as the only content word. After stemming, it still does not match \emph{argentine} (stemmed as \emph{argentin}), resulting in a score of 0 and causing the fact to be pruned. However, the cached model output for the same evidence gives $P(E) = 0.993$. This shows that the error comes from the lexical pruning step rather than the NLI model (Figure~\ref{fig:prunetrace}).
+\item[(e)] \textbf{Why it was wrong:} After the subject's name is removed, the only content word left is \emph{argentinian}, which does not match \emph{argentin}, the stem of \emph{Argentine}, so the overlap score is 0 and the fact is pruned. The model would have given $P(E) = 0.993$, so the error comes from pruning rather than the NLI model (Figure~\ref{fig:prunetrace}).
 \end{itemize}
 
 \begin{figure}[H]
@@ -319,7 +319,7 @@ Total & 10 & 10 & 20 \\
 \item[(c)] \textbf{Predicted:} NS (best $P(E) = 0.006$)
 \item[(d)] \textbf{Category:} C
 % \item[(e)] \textbf{Why it was wrong:} The support is a bibliography list with no verb and no mention of the author; authorship is only implied by the page the list appears on. The NLI model was trained on sentence pairs, so a premise like ``- `The Hunger', Transworld, March 2018 ()'' gives it no statement to entail.
-\item[(e)] \textbf{Why it was wrong:} The supporting evidence appears in a bibliography list, with no verb or mention of the author's name. The authorship is only implied by the page containing the list. Since the NLI model was trained on sentence pairs, a premise such as ``- `The Hunger', Transworld, March 2018 ()'' does not provide a clear statement for the model to verify.
+\item[(e)] \textbf{Why it was wrong:} The evidence is a bibliography list with no verb or author name, so authorship is only implied by the page. The NLI model was trained on full sentences, so a list item like this gives it no clear statement to verify.
 \end{itemize}
 
 \subsection{Discussion}
