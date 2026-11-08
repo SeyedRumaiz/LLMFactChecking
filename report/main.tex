@@ -224,7 +224,7 @@ FN5 & The Hunger is a novel by Katsu. & 0.006 & no & C & The title only appears 
 FN6 & He served for many years as a pastor. & 0.024 & no & C & The support is a broken sentence (``Malcolm a pastor of \dots''). \\
 FN7 & Hibo Wardere is based in the United Kingdom. & (0.999) & yes & D & The evidence says ``London, England'', so the fact was pruned. \\
 FN8 & With CSKA, he won domestic titles. & 0.035 & no & C & The titles only appear in an honours list. \\
-FN9 & Florencia Bertotti is an Argentinian. & (0.993) & yes & D & The evidence says ``Argentine'', so the fact was pruned. \\
+FN9 & Florencia Bertotti is an Argentinian. & (0.993) & yes & D & The evidence says ``Argentine'', thus the the fact was pruned. \\
 FN10 & ``New Heart.'' is popular. & 0.217 & no & B & The drama is listed, but the passage never says it was popular. \\
 \bottomrule
 \end{tabularx}
@@ -290,7 +290,7 @@ Total & 10 & 10 & 20 \\
 \item[(c)] \textbf{Predicted:} S ($P(E) = 0.993$)
 \item[(d)] \textbf{Category:} A
 % \item[(e)] \textbf{Why it was wrong:} Trivisonno and WKNR appear together in a radio-career context, but WKNR is the \emph{rival} station his show competed against, not his employer. The model rewards the two entities appearing together in the right domain instead of checking the \emph{worked at} relation between them.
-\item[(e)] \textbf{Why it was wrong:} Trivisonno and WKNR appear together in his radio career, but WKNR was the \emph{rival} station his show competed against, not his employer. The model relies on both being mentioned together instead of checking the \emph{worked at} relationship.
+\item[(e)] \textbf{Why it was wrong:} Trivisonno and WKNR are mentioned together in the context of his radio career. However, WKNR was the \emph{rival} station his show competed against, not his employer. The model focuses on the fact that both are mentioned in the same context instead of checking whether the evidence actually supports the \emph{worked at} relationship.
 \end{itemize}
 
 \paragraph{Example 2: surface-form mismatch amplified by pruning (FN9).}
@@ -301,7 +301,7 @@ Total & 10 & 10 & 20 \\
 \item[(c)] \textbf{Predicted:} NS (pruned; the model was never run)
 \item[(d)] \textbf{Category:} D
 % \item[(e)] \textbf{Why it was wrong:} The word-overlap score ignores the subject's name, so the only remaining content word is \emph{argentinian}. After stemming it does not match \emph{argentine} (stem \emph{argentin}), the score is 0, and the fact is pruned. The cached model output for the same evidence gives $P(E) = 0.993$, so this error comes entirely from the lexical pruning step and not from the NLI model (Figure~\ref{fig:prunetrace}).
-\item[(e)] \textbf{Why it was wrong:} After the subject's name is removed, the only content word left is \emph{argentinian}, which does not match \emph{argentin}, the stem of \emph{Argentine}, so the overlap score is 0 and the fact is pruned. The model would have given $P(E) = 0.993$, so the error comes from pruning rather than the NLI model (Figure~\ref{fig:prunetrace}).
+\item[(e)] \textbf{Why it was wrong:} The word-overlap score does not consider the subject's name, leaving \emph{argentinian} as the only content word. After stemming, it still does not match \emph{argentine} (stemmed as \emph{argentin}), resulting in a score of 0 and causing the fact to be pruned. However, the cached model output for the same evidence gives $P(E) = 0.993$. This shows that the error comes from the lexical pruning step rather than the NLI model (Figure~\ref{fig:prunetrace}).
 \end{itemize}
 
 \begin{figure}[H]
@@ -319,7 +319,7 @@ Total & 10 & 10 & 20 \\
 \item[(c)] \textbf{Predicted:} NS (best $P(E) = 0.006$)
 \item[(d)] \textbf{Category:} C
 % \item[(e)] \textbf{Why it was wrong:} The support is a bibliography list with no verb and no mention of the author; authorship is only implied by the page the list appears on. The NLI model was trained on sentence pairs, so a premise like ``- `The Hunger', Transworld, March 2018 ()'' gives it no statement to entail.
-\item[(e)] \textbf{Why it was wrong:} The evidence is a bibliography list with no verb or author name, so authorship is only implied by the page. The NLI model was trained on full sentences, so a list item like this gives it no clear statement to verify.
+\item[(e)] \textbf{Why it was wrong:} The supporting evidence appears in a bibliography list, with no verb or mention of the author's name. The authorship is only implied by the page containing the list. Since the NLI model was trained on sentence pairs, a premise such as ``- `The Hunger', Transworld, March 2018 ()'' does not provide a clear statement for the model to verify.
 \end{itemize}
 
 \subsection{Discussion}
@@ -587,10 +587,76 @@ False supports are often one surviving word that happens to occur on the page. M
 ``Marianne McAndrew is an American'' scores 1. After the title is removed, the only token is ``american'', and the page names the series ``Love, American Style''. The gold label is not supported. No cut that still accepts a complete overlap can reject it.
 
 % ---------------------------------------------------------------------
-\subsection{Shavindu's metric (Shavindu)}
+\subsection{Normalised BM25 (Shavindu)}
 \label{sec:p1shavindu}
-% Rename the heading to the metric used.
-\placeholder{Shavindu: method, preprocessing, tuning and results.}
+Jaccard, TF-IDF cosine and ROUGE were already in use, so this checker uses Okapi BM25. The fact is the query and each Wikipedia sentence is a document. The data file is already the output of a BM25 retrieval, which only chooses which paragraphs are available to read. It does not label the fact. The checker below uses BM25 as the label, with a threshold fit on the dev set.
+
+\paragraph{Preprocessing.}
+Tags are stripped, the text is lowercased, and everything that is not a letter or a digit is treated as a space. Years stay as tokens. A fixed list of function words is removed. Negations (\textit{no, not, never, nor}) stay on the list of tokens that are kept, because dropping ``not'' would make a denied claim look like a supported one. The remaining tokens are Porter stemmed. The page title, with any parenthetical such as ``(inventor)'' removed, is tokenised in the same way and those tokens are deleted from the fact. If that deletion leaves nothing, the name is kept, otherwise the score would be zero for a fact that is only a name.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{L{2.4cm} L{4.2cm} Y}
+\toprule
+Step & Choice & Reason \\
+\midrule
+Stop words & Fixed list, negations kept & Function words are in almost every sentence and do not carry the claim. \\
+Stemming & Porter & \textit{founded} and \textit{founding} should match. \\
+Title tokens & Removed from the fact & The name is in every passage about that person, so it inflates unsupported facts. \\
+Evidence unit & Sentence & One supporting sentence is enough. The whole passage was also tried. \\
+\bottomrule
+\end{tabularx}
+\caption{Preprocessing for the BM25 checker.}
+\label{tab:shavindu-prep}
+\end{table}
+
+\paragraph{Score.}
+$N = 1{,}562$ is the number of unique passages in the retrieval file. Document frequency is counted on that file before any label is read. For a term $t$,
+
+\begin{equation}
+\mathrm{idf}(t) = \log\left(\frac{N - \mathrm{df}(t) + 0.5}{\mathrm{df}(t) + 0.5} + 1\right).
+\end{equation}
+
+A term that is missing from the file gets the same formula with $\mathrm{df} = 0$. Let $\mathrm{tf}(t, D)$ be the count of $t$ in sentence $D$, and let $\mathrm{avgdl}$ be the mean sentence length in the same file (12.0 tokens after the cleaning above). With parameters $k_1$ and $b$,
+
+\begin{equation}
+s(D, Q) = \frac{\sum_{t \in Q} \mathrm{idf}(t)\, \dfrac{\mathrm{tf}(t, D)}{\mathrm{tf}(t, D) + k_1 \left(1 - b + b\,|D|/\mathrm{avgdl}\right)}}{\sum_{t \in Q} \mathrm{idf}(t)}.
+\end{equation}
+
+The fact score is the maximum over sentences. Dividing by the sum of the query IDF weights puts the score in $[0, 1]$, so the threshold can be swept in steps of $0.001$ like the other Part~1 scores. This is not binary IDF-recall. A term that occurs once in an average-length sentence contributes $1/(1 + k_1)$ of its IDF weight, and a second occurrence adds less than the first. The $b$ term marks down a sentence that is long relative to $\mathrm{avgdl}$.
+
+\paragraph{What was tuned.}
+With $k_1$ fixed at 1.2, $b$ was tried at 0, 0.25, 0.75 and 1, on sentences and on whole passages. On passages, $k_1$ was also tried at 0.6, 0.9, 1.5 and 2.0 with $b = 0$. Moving $k_1$ across that range changed the dev count by at most one fact. On sentences, $k_1 = 0.9$ with $b = 0.25$ ties the chosen row at 191/221 and the same 99 true supports, so the result is not one lucky cell. $k_1 = 1.2$ is kept. The threshold was fit on all 221 facts. Because that reuses the labels, 5-fold cross-validation with seed 42 refits the threshold on the other folds. A second check holds out whole biographies, so facts about the same person do not sit in both sides of a fold.
+
+On sentences with $k_1 = 1.2$, $b = 0$ scores 189/221, $b = 0.25$ scores 191/221, $b = 0.75$ scores 188/221 and $b = 1$ scores 187/221. A light length penalty helps. The usual default $b = 0.75$ is a bit harsh here, because a Wikipedia sentence that supports a fact is often longer than the fact and the extra words are not errors. Passage-level scoring at the same $k_1$ and $b = 0.25$ also reaches 191/221. The sentence setting is the one kept: supported-class F1 is 0.868 against 0.866 for the passage, and the biography-grouped check is 0.859 against 0.855. The two are close. The sentence checker is not ahead by a margin that would survive a different split.
+
+The submitted setting is sentences, $k_1 = 1.2$, $b = 0.25$, threshold $0.197$. It labels 191 of 221 facts correctly (86.4\%). Seed-42 cross-validation is 0.860. Precision on the supported class is 99/116 = 0.853, recall is 99/112 = 0.884, F1 is 0.868. The 17 false supports include 2 of the 16 irrelevant facts.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+Setting & Correct & Dev. & CV & Grouped & F1 \\
+\midrule
+Sentences, $k_1{=}1.2$, $b{=}0.25$ & 191 & 0.864 & 0.860 & 0.859 & 0.868 \\
+Passages, $k_1{=}1.2$, $b{=}0.25$ & 191 & 0.864 & 0.860 & 0.855 & 0.866 \\
+Sentences, $b{=}0$ & 189 & 0.855 & 0.846 & 0.850 & 0.861 \\
+Sentences, $b{=}0.75$ & 188 & 0.851 & 0.846 & 0.823 & 0.855 \\
+No stop-word removal & 188 & 0.851 & 0.842 & 0.848 & 0.856 \\
+No stemming & 185 & 0.837 & 0.833 & 0.833 & 0.838 \\
+Title tokens kept & 168 & 0.760 & 0.737 & 0.722 & 0.773 \\
+\bottomrule
+\end{tabular}
+\caption{BM25 settings on the 221 facts. CV refits the threshold in 5 folds (seed 42). Grouped holds out biographies. F1 is for the supported class. The $b = 0$ and $b = 0.75$ rows are sentences with $k_1 = 1.2$. The last three rows are the submitted sentence setting with one preprocessing step turned off.}
+\label{tab:shavindu-bm25}
+\end{table}
+
+Removing the title tokens costs 23 facts (191 to 168). Stemming costs 6. Stop-word removal costs 3 on the full set and a bit more under cross-validation (0.860 to 0.842). The name removal is the change that matters most, which matches the idea that the subject string is in nearly every retrieved passage.
+
+\paragraph{Where it goes wrong.}
+``He has worked at Mayo Clinic'' scores 0.432 and is predicted supported. The page says Oliphant has a PhD from the Mayo Clinic, not that he worked there. The content words overlap and BM25 has no slot for the relation. ``He has since then starred in numerous films'' scores 0.161 and is missed. The page names individual films, but it does not say ``starred'' or ``numerous'', so the query terms are mostly absent. A wrong year can still pass: ``The Fischer Research Laboratory was founded in 1936'' scores 0.357 against a sentence that says Fisher Research Laboratory was founded in 1931. \textit{Founded}, \textit{research} and \textit{laboratory} carry the score, and the year does not have to match. The same limit is in the other overlap checkers. IDF-weighted recall remains the Part~1 model in \texttt{factcheck.py}, at 194/221.
 
 % ---------------------------------------------------------------------
 \subsection{Comparison and final model}
@@ -606,7 +672,7 @@ Method & Member & Accuracy & CV \\
 Jaccard (whole passage, stop+stem) & Tamadhi & 0.701 & -- \\
 TF-IDF cosine (sentence, stop+stem) & Rumaiz & 0.760 & -- \\
 ROUGE-1 recall (8-token windows) & Dion & 0.828 & 0.805 \\
-% Shavindu's method & Shavindu & 0.000 & -- \\
+BM25 (sentences, $k_1{=}1.2$, $b{=}0.25$) & Shavindu & 0.864 & 0.860 \\
 \textbf{IDF-recall + name removal + global IDF} & Rumaiz & \textbf{0.878} & \textbf{0.869} \\
 \bottomrule
 \end{tabular}
@@ -852,10 +918,36 @@ The submitted list is the only row at the full count. Dropping the passage costs
 \paragraph{Limitations:} The cut at 0.25 does not repair errors far from it. The eight false supports run from 0.6762 to 0.9988, and ten misses never reach the model because the gate removed every premise. False supports are relations and added details that one premise still entailed. Misses are title words, renamed places, and conflicting numbers. There is no separate irrelevant label. ``Cleveland is in Ohio'' was irrelevant and is predicted supported at 0.9962, from pages that mention East Cleveland, Ohio, Strongsville, Ohio, and the Cleveland Indians.
 
 % ---------------------------------------------------------------------
-\subsection{Shavindu's approach (Shavindu)}
+\subsection{BM25 gate, then sentence entailment (Shavindu)}
 \label{sec:p2shavindu}
-% Rename the heading to the approach used.
-\placeholder{Shavindu: premise construction, decision rule, pruning and results.}
+The premises here are single sentences. Passages are split on the \texttt{<s>} tags and then on \texttt{.!?}. A piece with fewer than three words is dropped. The fact is the hypothesis. Two-sentence windows are not built, so a sentence that starts with ``He'' does not inherit the name from the line above.
+
+Each sentence is also given the Part~1 BM25 score ($k_1 = 1.2$, $b = 0.25$, title tokens removed). If the best sentence for a fact scores under $0.05$, the fact is labelled NS and the model is not run. $0.05$ is well below the Part~1 decision threshold of $0.197$, so this is only a filter for facts with almost no content-word overlap. It removes 47 of the 221 facts and 977 of the 5{,}412 sentences, and leaves 4{,}435 sentences for DeBERTa. The fact score is the maximum entailment probability on the sentences that remain. The cut is $0.33$.
+
+That labels 186 of 221 facts correctly (84.2\%): 86 true supports, 9 false supports, 26 misses and 100 correct rejects. Supported precision is $86/95 = 0.905$ and recall is $86/112 = 0.768$. The count is the same at $0.325$. From $0.30$ to $0.35$ it stays between 184 and 186, so the cut is not a one-step spike.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Setting & Correct & $P$ & $R$ & Model calls \\
+\midrule
+No gate, max $P(E)$, cut $0.33$ & 181 & 0.846 & 0.786 & 5412 \\
+Gate $0.05$, max $P(E)$, cut $0.33$ & \textbf{186} & 0.905 & 0.768 & 4435 \\
+Gate $0.10$, max $P(E)$, cut $0.33$ & 184 & 0.912 & 0.741 & 3832 \\
+Best BM25 sentence only, cut $0.05$ & 168 & 0.839 & 0.652 & 221 \\
+\bottomrule
+\end{tabular}
+\caption{Sentence-level entailment. $P$ and $R$ are for the supported class. The gate is a minimum BM25 score; a fact under it is labelled NS with no model call. ``Best BM25 sentence only'' ignores every sentence except the one with the highest BM25.}
+\label{tab:shavindu-p2}
+\end{table}
+
+Without the gate, the same cut of $0.33$ scores 181/221 (88 true supports, 16 false supports). The gate at $0.05$ removes 7 false supports and 2 true ones, a net gain of five facts. Raising the gate to $0.10$ scores 184/221: three more supported facts are dropped and one more false support is removed. Using only the single highest-BM25 sentence scores 168/221. The sentence with the most word overlap is often not a sentence the model can judge, so the max over the gated sentences is the better rule.
+
+Refitting the cut in 5 folds (seed 42), with the gate held at $0.05$, gives $0.814$. Two of the folds select a cut near $0.05$, which calls a fact supported on a very small probability, and that choice does not hold up on the held-out fold. Keeping the search inside the flat part of the dev curve, cuts from $0.20$ to $0.50$, the same folds score $0.833$.
+
+This checker is not the one in \texttt{factcheck.py}. The window model scores 191/221. One reason for the gap is a pronoun sentence: the evidence can read ``He was born\ldots'' while the person's name is only in the sentence before, and this checker never joins the two.
 
 % ---------------------------------------------------------------------
 \subsection{Comparison and final model}
@@ -868,7 +960,7 @@ The submitted list is the only row at the full count. Dropping the passage costs
 Approach & Member & Accuracy \\
 \midrule
 Sentence, pair and passage, max $P(E)$ & Dion & 0.842 \\
-% Shavindu's approach & Shavindu & 0.000 \\
+BM25 gate $0.05$, sentence max $P(E)$ & Shavindu & 0.842 \\
 \textbf{Window premises, max $P(E)$, pruning $\tau=0.1$} & Rumaiz & \textbf{0.864} \\
 \bottomrule
 \end{tabular}
