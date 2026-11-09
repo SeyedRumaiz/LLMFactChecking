@@ -1,0 +1,254 @@
+[
+  {
+    "type": "FP",
+    "fact": "Marianne McAndrew is a singer.",
+    "gold": "NS",
+    "score": 0.9601,
+    "pruned": false
+  },
+  {
+    "type": "FP",
+    "fact": "Cleveland is in Ohio.",
+    "gold": "IR",
+    "score": 0.9931,
+    "pruned": false
+  },
+  {
+    "type": "FN",
+    "fact": "Gerhard Fischer is best known for inventing a metal detector.",
+    "gold": "S",
+    "score": 0.0109,
+    "pruned": false
+  },
+  {
+    "type": "FN",
+    "fact": "Gerhard Fischer invented the first handheld, battery-operated metal detector.",
+    "gold": "S",
+    "score": 0.0045,
+    "pruned": false
+  },
+  {
+    "type": "FP",
+    "fact": "Tusa has been involved in various cultural initiatives.",
+    "gold": "NS",
+    "score": 0.7007,
+    "pruned": false
+  },
+  {
+    "type": "FP",
+    "fact": "Jean Daull\u00e9 was a printmaker.",
+    "gold": "NS",
+    "score": 0.9611,
+    "pruned": false
+  },
+  {
+    "type": "FN",
+    "fact": "Jean Daull\u00e9 was known for his portraits.",
+    "gold": "S",
+    "score": 0.0761,
+    "pruned": false
+  },
+  {
+    "type": "FP",
+    "fact": "Itakura has represented Japan at the Under-19-level.",
+    "gold": "NS",
+    "score": 0.5125,
+    "pruned": false
+  },
+  {
+    "type": "FP",
+    "fact": "Trivisonno worked at WMMS.",
+    "gold": "NS",
+    "score": 0.965,
+    "pruned": false
+  },
+  {
+    "type": "FP",
+    "fact": "Trivisonno worked at WKNR.",
+    "gold": "NS",
+    "score": 0.9929,
+    "pruned": false
+  },
+  {
+    "type": "FN",
+    "fact": "The Taker trilogy is a novel by Katsu.",
+    "gold": "S",
+    "score": 0.0495,
+    "pruned": false
+  },
+  {
+    "type": "FN",
+    "fact": "The Hunger is a novel by Katsu.",
+    "gold": "S",
+    "score": 0.0055,
+    "pruned": false
+  },
+  {
+    "type": "FN",
+    "fact": "The Deep is a novel by Katsu.",
+    "gold": "S",
+    "score": 0.0105,
+    "pruned": false
+  },
+  {
+    "type": "FN",
+    "fact": "Red Widow is a novel by Katsu.",
+    "gold": "S",
+    "score": 0.0089,
+    "pruned": false
+  },
+  {
+    "type": "FN",
+    "fact": "He served for many years as a pastor.",
+    "gold": "S",
+    "score": 0.0236,
+    "pruned": false
+  },
+  {
+    "type": "FP",
+    "fact": "She has worked with a number of organizations.",
+    "gold": "NS",
+    "score": 0.9243,
+    "pruned": false
+  },
+  {
+    "type": "FP",
+    "fact": "Nisar Ahmad Kakru was Kashmiri.",
+    "gold": "NS",
+    "score": 0.9967,
+    "pruned": false
+  },
+  {
+    "type": "FP",
+    "fact": "He has worked as a researcher at various organizations.",
+    "gold": "NS",
+    "score": 0.9384,
+    "pruned": false
+  },
+  {
+    "type": "FP",
+    "fact": "He has worked as a scientist at various organizations.",
+    "gold": "NS",
+    "score": 0.8449,
+    "pruned": false
+  },
+  {
+    "type": "FP",
+    "fact": "Mayo Clinic is an organization.",
+    "gold": "NS",
+    "score": 0.8879,
+    "pruned": false
+  },
+  {
+    "type": "FP",
+    "fact": "He has worked at Mayo Clinic.",
+    "gold": "NS",
+    "score": 0.7088,
+    "pruned": false
+  },
+  {
+    "type": "FP",
+    "fact": "He served as a sniper.",
+    "gold": "NS",
+    "score": 0.9988,
+    "pruned": false
+  },
+  {
+    "type": "FN",
+    "fact": "She was born on July 18, 1987.",
+    "gold": "S",
+    "score": 0.0007,
+    "pruned": false
+  },
+  {
+    "type": "FN",
+    "fact": "With CSKA, he won domestic titles.",
+    "gold": "S",
+    "score": 0.035,
+    "pruned": false
+  },
+  {
+    "type": "FP",
+    "fact": "Bertotti is a talented performer.",
+    "gold": "NS",
+    "score": 0.7777,
+    "pruned": false
+  },
+  {
+    "type": "FP",
+    "fact": "Bertotti is an accomplished performer.",
+    "gold": "NS",
+    "score": 0.6759,
+    "pruned": false
+  },
+  {
+    "type": "FN",
+    "fact": "Jonathan Haagensen was born in Rio de Janeiro.",
+    "gold": "S",
+    "score": 0.0056,
+    "pruned": false
+  },
+  {
+    "type": "FN",
+    "fact": "Rio de Janeiro is in Brazil.",
+    "gold": "S",
+    "score": -2.0,
+    "pruned": true
+  },
+  {
+    "type": "FN",
+    "fact": "Haagensen later transitioned to television.",
+    "gold": "S",
+    "score": -2.0,
+    "pruned": true
+  },
+  {
+    "type": "FP",
+    "fact": "Kerser is a songwriter.",
+    "gold": "NS",
+    "score": 0.9878,
+    "pruned": false
+  },
+  {
+    "type": "FN",
+    "fact": "They divorced in 1964.",
+    "gold": "S",
+    "score": -2.0,
+    "pruned": true
+  },
+  {
+    "type": "FP",
+    "fact": "Jidenna's music is a fusion of hip-hop.",
+    "gold": "NS",
+    "score": 0.8573,
+    "pruned": false
+  },
+  {
+    "type": "FN",
+    "fact": "He has since then starred in numerous films.",
+    "gold": "S",
+    "score": 0.0715,
+    "pruned": false
+  },
+  {
+    "type": "FN",
+    "fact": "\"New Heart.\" is popular.",
+    "gold": "S",
+    "score": 0.2171,
+    "pruned": false
+  },
+  {
+    "type": "FN",
+    "fact": "\"Kill Me, Heal Me.\" is popular.",
+    "gold": "S",
+    "score": -2.0,
+    "pruned": true
+  },
+  {
+    "type": "FN",
+    "fact": "\"Familiar Wife.\" is popular.",
+    "gold": "S",
+    "score": 0.0646,
+    "pruned": false
+  }
+]

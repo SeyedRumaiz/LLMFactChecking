@@ -29,9 +29,11 @@
 \usepackage{tabularx}
 \usepackage{array}
 \usepackage{amssymb}% \checkmark
+\newcommand{\ck}{\checkmark}
 \usepackage{tikz}
 \usetikzlibrary{positioning,shapes.geometric,arrows.meta,calc}
 \usepackage{enumitem}
+\usepackage{needspace}
 \usepackage{caption}
 \usepackage{setspace}
 \setstretch{0.90}
@@ -124,15 +126,1045 @@
 \end{center}
 \newpage
 % =====================================================================
+% TABLE OF CONTENTS
+% =====================================================================
+\setcounter{tocdepth}{2}
+\tableofcontents
+\newpage
+% =====================================================================
+% PART 1: WORD OVERLAP (40%)
+% Each member has their own subsection. The final model used in factcheck.py
+% is chosen in "Comparison and final model".
+% =====================================================================
+\newpage
+\section{Introduction and Data}
+\label{sec:intro}
+We use the FActScore dataset (\url{https://github.com/shmsw25/FActScore}). In Part~1, an IDF-weighted word-recall classifier removes subject names and calculates IDF across the full corpus. It achieves an accuracy of \textbf{87.8\%}, with 86.9\% in 5-fold cross-validation, exceeding the 75\% target. Part~2 uses a DeBERTa-v3 NLI model with two-sentence premise windows and word-overlap pruning. It achieves \textbf{86.4\%} accuracy (85.5\% in 5-fold cross-validation), surpassing the 83\% target while reducing the number of model calls by around 37\%. Part~3 focuses on 10 false positives and 10 false negatives from the entailment model, grouping them into four categories to identify common error patterns.
+
+LLMs can produce text that sounds convincing but is not always factually correct. For this task, each ChatGPT-generated biography is broken down into atomic facts, which are then checked against Wikipedia passages. Each fact is given a human-assigned label: \textbf{S} (supported), \textbf{NS} (not supported) or \textbf{IR} (irrelevant). In the provided \texttt{factchecking\_main.py}, IR is treated as NS, turning the task into a balanced binary classification problem.
+
+All methods are evaluated in the same way: a fact is classified as S if its score is $\geq \theta$. The threshold $\theta$ is selected by grid search over $[0,1]$ in steps of $0.001$, choosing the value with the highest accuracy. Since tuning and evaluation use the same development set, we also report 5-fold cross-validation accuracy ($\theta$ tuned on 4 folds and tested on the remaining fold, using seed 42), along with how accuracy varies across different threshold values.
+
+\begin{figure}[H]
+\centering
+\safefig{\linewidth}{figures/pipeline_overview.png}
+\caption{Overview of the two fact checkers. Part~2 reuses the Part~1 overlap score as a pruning filter before running the NLI model.}
+\label{fig:overview}
+\end{figure}
+
+\newpage
+\section{Part 1: Word Overlap}
+\label{sec:part1}
+Each group member implemented and tuned a different overlap metric under the evaluation protocol of Section~\ref{sec:intro}. The best-performing method is used in \texttt{factcheck.py} (Section~\ref{sec:p1final}).
+
+% ---------------------------------------------------------------------
+\subsection{TF-IDF and IDF-weighted recall (Rumaiz)}
+\label{sec:p1rumaiz}
+
+\paragraph{Preprocessing:} Text is converted to lowercase, \texttt{<s>} markup is removed, and punctuation is replaced with spaces. Digits are kept because years can be important when checking facts. The table below shows the other preprocessing choices, which are each tested in the ablation study below.
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\linewidth}{L{2.2cm} L{4.6cm} Y}
+\toprule
+Step & Choice & Reason \\
+\midrule
+Stopwords & spaCy list \emph{minus} negations (\textit{no, not, never, \dots}) & Removes function words that inflate overlap; keeping negations stops ``did \emph{not} win'' matching ``won''. \\
+Stemming & Porter & Matches variants (\textit{acting, acted $\rightarrow$ act}). \\
+N-grams & Unigrams & Bigrams lowered accuracy (refer below table). \\
+Evidence unit & Sentence or passage & Both evaluated. \\
+\bottomrule
+\end{tabularx}
+\caption{Preprocessing choices.}
+\label{tab:prep}
+\end{table}
+
+\paragraph{Scoring:} Let $F$ represent the terms in a fact and $U$ the terms in an evidence unit. IDF is calculated using the smoothed formula $\mathrm{idf}(t) = \log\frac{N+1}{\mathrm{df}(t)+1} + 1$. The baseline method uses TF-IDF cosine similarity, with log-scaled term frequency and L2-normalised vectors. However, cosine similarity can penalise longer evidence passages for containing words that are not in the fact. Since fact verification mainly focuses on how much of a fact is covered by the evidence, we also use IDF-weighted recall:
+
+\begin{equation}
+\mathrm{score}(f) = \max_{U}\ \frac{\sum_{t \in F \cap U} \mathrm{idf}(t)}{\sum_{t \in F} \mathrm{idf}(t)} .
+\end{equation}
+
+All methods are implemented from scratch, so \texttt{factcheck.py} does not require any additional libraries.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{llcccccccc}
+\toprule
+Metric & Unit & N-gram & Stop & Stem & $\theta$ & Acc & P & R & F1 \\
+\midrule
+IDF-recall & passage  & 1   & \checkmark & \checkmark & 0.605 & \textbf{0.819} & 0.883 & 0.741 & 0.806 \\
+IDF-recall & sentence & 1   & \checkmark & \checkmark & 0.424 & 0.801 & 0.770 & 0.866 & 0.815 \\
+Cosine     & sentence & 1   & \checkmark & \checkmark & 0.270 & 0.760 & 0.736 & 0.821 & 0.776 \\
+Cosine     & sentence & 1   & \checkmark &            & 0.260 & 0.733 & 0.715 & 0.786 & 0.749 \\
+Cosine     & passage  & 1+2 & \checkmark & \checkmark & 0.040 & 0.724 & 0.658 & 0.946 & 0.777 \\
+Cosine     & sentence & 1+2 & \checkmark & \checkmark & 0.125 & 0.720 & 0.669 & 0.884 & 0.762 \\
+Cosine     & sentence & 1   &            &            & 0.288 & 0.701 & 0.730 & 0.652 & 0.689 \\
+Cosine     & sentence & 1+2 &            &            & 0.144 & 0.692 & 0.667 & 0.786 & 0.721 \\
+\bottomrule
+\end{tabular}
+\caption{Ablation results on the dev set.}
+\label{tab:ablation}
+\end{table}
+
+\newpage
+\noindent \textbf{Findings:} With the same preprocessing, IDF-weighted recall performs better than cosine similarity (80.1\% compared to 76.0\%). Removing stopwords and applying stemming also improve accuracy (70.1\% to 76.0\%). However, adding bigrams reduces accuracy (76.0\% to 72.0\%), likely because most facts are only 5--10 words long.
+
+\paragraph{Subject-name removal and global IDF:} Two additional changes, both made without using the labels, gave the biggest improvement (Table~\ref{tab:tuning}, Figure~\ref{fig:p1scorer}). First, the subject's name (taken from the page title) is removed because it appears in almost every passage (603 of 692) and can make unsupported facts seem more relevant. Second, IDF is calculated using all 1{,}562 unique passages instead of just the 2--5 passages available for each fact. These changes work better together. Using global IDF alone slightly reduces accuracy because rare names receive higher weights. However, removing subject names first gives the best overall result.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule
+Unit & Drop name & IDF & $\theta$ & Acc & 5-fold CV \\
+\midrule
+sentence & \checkmark & global & 0.455 & \textbf{0.878} & \textbf{0.869} \\
+passage  & \checkmark & global & 0.455 & 0.855 & 0.837 \\
+sentence & \checkmark & local  & 0.468 & 0.846 & 0.819 \\
+passage  & \checkmark & local  & 0.441 & 0.846 & 0.814 \\
+passage  &            & global & 0.718 & 0.828 & 0.801 \\
+passage  &            & local  & 0.605 & 0.819 & 0.797 \\
+sentence &            & local  & 0.424 & 0.801 & 0.756 \\
+sentence &            & global & 0.494 & 0.792 & 0.751 \\
+\bottomrule
+\end{tabular}
+\caption{Comparison of name removal, IDF source and evidence unit across different combinations.}
+\label{tab:tuning}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\safefig{0.6\linewidth}{figures/part1_scorer.png}
+\caption{The final IDF-recall scorer applied to an example fact.}
+\label{fig:p1scorer}
+\end{figure}
+
+% ---------------------------------------------------------------------
+\subsection{Jaccard similarity (Tamadhi)}
+\label{sec:p1tamadhi}
+Jaccard similarity compares the set of fact tokens $F$ with the set of tokens in an evidence unit $W$:
+\begin{equation}
+J(F, W) = \frac{|F \cap W|}{|F \cup W|}.
+\end{equation}
+Unlike recall, Jaccard also divides by the words of the evidence that are \emph{not} in the fact, so the size of the evidence unit matters. A first notebook (150 experiments) scored whole passages and reached only 155/221 (70.1\%) at $\theta = 0.03$, below the 75\% target. A second notebook keeps the same data and evaluation but adds two changes, name removal and short windows, and fixes how the threshold, IDF and cross-validation were done.
+
+\paragraph{Preprocessing:} Text is lowercased, \texttt{<s>} tags are removed and the NLTK word tokeniser is used, keeping only letters and digits. The other choices are in Table~\ref{tab:tam-p1-prep}; each is tested in Table~\ref{tab:tam-p1-ablation}.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{L{2.6cm} L{4.4cm} Y}
+\toprule
+Step & Choice & Reason \\
+\midrule
+Stop words & Fixed list of 47 function words, negations kept & Function words fill the union and hide the content words; \textit{not} must still count. \\
+Stemming & Porter & \textit{founded} and \textit{founding} should match. \\
+Subject name & Page-title tokens removed from the fact and the evidence & The name is in nearly every passage, so it makes any fact about the person look supported. A role in brackets, as in ``Kerser (rapper)'', is not treated as part of the name. If only the name is left, it is kept. \\
+Evidence unit & Windows of 12 tokens, stride 6, over each passage & Keeps the union close to the size of the fact. \\
+Aggregation & Mean of the two best windows (top-2) & One accidental match counts less than a span found by two overlapping windows. \\
+\bottomrule
+\end{tabularx}
+\caption{Tamadhi: preprocessing and scoring for the Jaccard checker.}
+\label{tab:tam-p1-prep}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\safefig{0.55\linewidth}{figures/tamadhi_p1_flow.png}
+\caption{Tamadhi: how the final Jaccard checker labels a fact.}
+\label{fig:tam-p1-flow}
+\end{figure}
+
+\paragraph{Changes from the first version:} The threshold is now swept in steps of $0.001$, as in Section~\ref{sec:intro}. The old $0.01$ grid had only three useful values below $0.03$. IDF weights are counted over the 1{,}562 unique passages instead of every repeated copy. 5-fold cross-validation (seed 42) and a split that holds out whole biographies were added. Table~\ref{tab:tam-p1-steps} shows that the finer grid alone adds only four facts. Almost all of the gain comes from name removal and windows.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule
+Version & $\theta$ & Correct & Accuracy & CV & F1 (S) \\
+\midrule
+First notebook: whole passage, name kept, $0.01$ grid & 0.030 & 155/221 & 0.701 & -- & 0.732 \\
+Same setting, $0.001$ grid & 0.027 & 159/221 & 0.719 & 0.696 & 0.767 \\
+\textbf{Name removed, 12-token windows, top-2} & \textbf{0.081} & \textbf{181/221} & \textbf{0.819} & \textbf{0.819} & \textbf{0.832} \\
+\bottomrule
+\end{tabular}
+\caption{Tamadhi: from the first Jaccard checker to the final one.}
+\label{tab:tam-p1-steps}
+\end{table}
+
+\paragraph{Name removal and evidence unit:} 48 settings were tried: two tokenisers, name kept or removed, three evidence units, IDF weighting on or off, and max or top-2 aggregation. Table~\ref{tab:tam-p1-unit} gives the best result for each unit. Removing the name helps every unit except, under cross-validation, the whole passage. Windows are clearly the best unit, with or without the name. A whole passage has a few hundred tokens, so even a supported fact gets a Jaccard of about $0.03$. A sentence is better, but a long Wikipedia sentence still dilutes a 3--6 token fact.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+& \multicolumn{2}{c}{Name kept} & \multicolumn{2}{c}{Name removed} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Unit & Accuracy & CV & Accuracy & CV \\
+\midrule
+Whole passage & 0.719 & 0.696 & 0.729 & 0.683 \\
+Sentence      & 0.692 & 0.660 & 0.742 & 0.715 \\
+Window (8 tokens) & 0.783 & 0.751 & \textbf{0.814} & \textbf{0.796} \\
+\bottomrule
+\end{tabular}
+\caption{Tamadhi: best setting for each evidence unit, with and without the subject's name.}
+\label{tab:tam-p1-unit}
+\end{table}
+
+\paragraph{Window size:} With the other settings fixed, windows of 8 to 12 tokens all score at least 0.810 (Figure~\ref{fig:tam-p1-win}). Shorter windows cut a supporting span in two, and longer ones start to dilute it again. 12 tokens with stride 6 is best on accuracy, CV and grouped CV. Dion's ROUGE-1 recall in Section~\ref{sec:p1dion} also uses windows (8 tokens), which supports the same idea.
+
+\begin{figure}[H]
+\centering
+\safefig{0.8\linewidth}{figures/tamadhi_p1_window.png}
+\caption{Tamadhi: accuracy and 5-fold CV against window size (NLTK tokeniser, stop words removed, stemming, name removed, unweighted, top-2). Grouped CV is 0.771, 0.799, 0.804, 0.810, \textbf{0.820}, 0.769 and 0.717 for the same sizes.}
+\label{fig:tam-p1-win}
+\end{figure}
+
+\paragraph{One change at a time:} Table~\ref{tab:tam-p1-ablation} starts from the final setting and changes one choice per row, retuning $\theta$ each time. The evidence unit and stop-word removal matter most (about 30 facts each), then name removal (13 facts). IDF weighting lowers accuracy by 10 facts. This differs from IDF-recall in Section~\ref{sec:p1rumaiz}, where IDF helps. A likely reason is that weighted Jaccard also weights the union, so a rare word in the window that is not in the fact pulls the score down strongly.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lcccccc}
+\toprule
+Setting & $\theta$ & Correct & Accuracy & CV & Grouped & F1 (S) \\
+\midrule
+\textbf{Final} & \textbf{0.081} & \textbf{181/221} & \textbf{0.819} & \textbf{0.819} & \textbf{0.820} & \textbf{0.832} \\
+Regex tokeniser & 0.077 & 175/221 & 0.792 & 0.792 & 0.786 & 0.813 \\
+No stemming & 0.081 & 174/221 & 0.787 & 0.778 & 0.780 & 0.793 \\
+IDF weighting on & 0.067 & 171/221 & 0.774 & 0.742 & 0.734 & 0.800 \\
+Name kept & 0.130 & 168/221 & 0.760 & 0.724 & 0.712 & 0.792 \\
+Sentence instead of window & 0.032 & 154/221 & 0.697 & 0.696 & 0.654 & 0.722 \\
+No stop-word removal & 0.166 & 151/221 & 0.683 & 0.642 & 0.625 & 0.693 \\
+Whole passage instead of window & 0.020 & 150/221 & 0.679 & 0.642 & 0.630 & 0.654 \\
+\bottomrule
+\end{tabular}
+\caption{Tamadhi: the final Jaccard setting with one choice changed per row. ``Grouped'' holds out whole biographies.}
+\label{tab:tam-p1-ablation}
+\end{table}
+
+\paragraph{Final result:} The final checker scores 181/221 (81.9\%) at $\theta = 0.081$, above the 75\% target. Cross-validation gives $0.819 \pm 0.033$ and holding out whole biographies gives $0.820 \pm 0.040$. Both match the full-set accuracy, so the result does not depend on tuning $\theta$ on all 221 facts. The peak itself is narrow: the best plateau is $[0.081, 0.083]$, and accuracy stays at or above 75\% only for $\theta \in [0.072, 0.087]$ (Figure~\ref{fig:tam-p1}). Jaccard scores are small and close together, mostly between 0 and 0.3, so a small change in $\theta$ moves many facts. This is the main weakness compared with IDF-recall, which stays above 85\% for $\theta \in [0.43, 0.53]$.
+
+\begin{figure}[H]
+\centering
+\safefig{\linewidth}{figures/jaccard_v2.png}
+\caption{Tamadhi: left, accuracy against threshold for the final Jaccard checker and the first version; right, score distribution of the final checker by gold label.}
+\label{fig:tam-p1}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+Class & Precision & Recall & F1 \\
+\midrule
+S  & 0.786 & 0.884 & 0.832 \\
+NS & 0.863 & 0.752 & 0.804 \\
+\bottomrule
+\end{tabular}
+\caption{Tamadhi: final Jaccard checker ($\theta = 0.081$): accuracy 181/221 = \textbf{81.9\%} (TP 99, FN 13, FP 27, TN 82).}
+\label{tab:tam-p1-final}
+\end{table}
+
+\paragraph{Where it goes wrong:} Compared with the first notebook's 155/221 result, false positives fall from 44 to 27 and false negatives from 22 to 13. Most remaining false positives share the content words but differ in a detail. ``The Fischer Research Laboratory was founded in 1936'' scores 0.275 although the page gives 1931. ``With CSKA, he won three Russian Premier League titles'' scores 0.258 although the passages do not support the number. ``He has worked at Mayo Clinic'' scores 0.240 because the page says he studied there. Four unsupported facts about Salazar and the Peru national team (caps, goals, dates) pass for the same reason. Four false negatives score exactly 0. In two of them the fact and the page use different words: \textit{Argentinian} against \textit{Argentine}, and \textit{United Kingdom} against \textit{London}. In ``They divorced in 1964'' the divorce is not in the retrieved passages at all. Name removal also has a cost: the fact ``Jonathan Haagensenis an actor'' contains a typo, so the joined token \textit{haagensenis} is not removed as part of the name and matches nothing. Jaccard cannot check years, numbers or relations, so these errors remain for the entailment model in Part~2.
+
+% ---------------------------------------------------------------------
+\subsection{ROUGE-1 recall (Dion)}
+\label{sec:p1dion}
+
+ROUGE-1 recall is an overlap metric: the share of a reference text's words that appear in a candidate text.
+
+\paragraph{Text cleaning:}
+
+Before any token is formed, the fact and each passage are repaired as character strings. Markup or a compatibility character would otherwise become a token or split a name.
+
+\begin{center}
+\small
+\begin{tabular}{@{}llp{7.4cm}@{}}
+\toprule
+Step & Choice & Reason \\
+\midrule
+Unicode & NFKC & Compatibility forms would split a name the page spells as one word. \\
+Entities & HTML unescape & A name left as an entity would not match the same name in the fact. \\
+Markup & Tags become spaces & Wikipedia tags, including sentence markers, are not words. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Preprocessing:}
+
+A cleaned string is casefolded and split on Unicode word characters, with underscores excluded. A fixed stop list is removed, and the rest are Porter stemmed. Negations and numerals stay, so ``not'' and a year both survive. Stemming makes an inflection count once.
+
+\begin{center}
+\small
+\begin{tabular}{@{}llp{7.4cm}@{}}
+\toprule
+Step & Choice & Reason \\
+\midrule
+Case & Casefold & Capitalisation should not decide a match. \\
+Split & Unicode word characters & Punctuation and underscores are not part of the overlap. \\
+Stop words & Fixed list removed & Function words do not carry the claim. Negations and numerals stay. \\
+Stem & Porter & Inflections of one word should count as one token. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Keeping the stop list and the stemmer raises held-out accuracy to 0.805. Without the stop list it falls to 0.593, because function words fill the window, and without stemming it falls to 0.774, because separate inflections no longer match.
+
+\paragraph{Title filtering:}
+
+Each passage title is tokenised in the same way and removed from that passage before the windows are cut. Removing it raises held-out accuracy from 0.719 to 0.805, because the name would otherwise fill the window and hide the predicate.
+
+If that removal leaves no tokens, the score is 0 and the prediction is not supported. ``Rennie Fritchie is a Baroness'' is this case. The title ``Rennie Fritchie, Baroness Fritchie'' contains every content word. The gold label is supported, and no cut repairs a zero.
+
+\paragraph{Segmentation:}
+
+The remaining tokens are cut into windows of eight, stride four. A passage of eight tokens or fewer is one window. A short remainder is kept as a shorter window, neither padded nor dropped. The fact score is the maximum over windows and passages. One supporting span is enough. A mean over the page would dilute that span. The windows raise held-out accuracy from 0.751 to 0.805, because the fact's words have to sit together rather than match anywhere on the page.
+
+\paragraph{Scoring:}
+
+Each window is scored by how much of the fact appears in it. \(c_F(g)\) is the count of unigram \(g\) in the fact, and \(c_W(g)\) is its count in the window. A word cannot count more times than it appears in the fact, and the overlap is divided by the length of the fact, not the window. The fact score is the highest of those window scores.
+
+\begin{equation}
+R(F,W)=\frac{\sum_{g}\min\bigl(c_F(g),c_W(g)\bigr)}{\sum_{g}c_F(g)}
+\end{equation}
+
+The cut that gets the most of the 221 facts right is
+
+\[
+\frac{3}{7} = 0.42857142857142855.
+\]
+
+A fact is supported when its highest window score is at least \(3/7\). The highest score is the maximum of \(R(F,W)\) over the windows, so the fact takes the window where the largest share of its words appears.
+
+\paragraph{Preprocessing and evidence choices:}
+
+Each row turns one chosen setting off and retunes the cut. A blank cell means that switch is off. Development accuracy, held-out accuracy, precision, recall, and F1 are in Table~\ref{tab:p1choices}.
+
+Leaving the stop words in scores 159/221 (0.719) on the full set and 131/221 (0.593) held out. Function words then fill the window, so the stop list stays. The stem row is lower on both columns, so stemming stays. Leaving the title tokens in scores 170/221 (0.769), and precision on the supported class falls to 0.723, because the name matches windows that do not contain the predicate. Scoring the whole passage instead of the windows is the 177/221 (0.801) row, and recall falls to 78/112 (0.696) because the page dilutes the fact. The chosen row is the only one that leads the held-out column.
+
+\begin{table}[H]
+\centering
+{\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}cccccrrrr@{}}
+\toprule
+Stop & Stem & Title & Segmentation & Dev.\ accuracy & Held-out accuracy & P & R & F1 \\
+\midrule
+\ck & \ck & \ck & \ck & \textbf{183/221 (0.828)} & \textbf{0.805} & 0.825 & 0.839 & 0.832 \\
+ & \ck & \ck & \ck & 159/221 (0.719) & 0.593 & 0.719 & 0.732 & 0.726 \\
+\ck & & \ck & \ck & 176/221 (0.796) & 0.774 & 0.813 & 0.777 & 0.795 \\
+\ck & \ck & & \ck & 170/221 (0.769) & 0.719 & 0.723 & 0.884 & 0.795 \\
+\ck & \ck & \ck & & 177/221 (0.801) & 0.751 & 0.886 & 0.696 & 0.780 \\
+\bottomrule
+\end{tabular}}
+}
+\caption{Dion: Part 1 choices}
+\label{tab:p1choices}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=6.5mm,
+  box/.style={draw, rounded corners=2pt, align=center, font=\footnotesize, inner sep=3pt, text width=7.4cm, minimum height=7.2mm},
+  arr/.style={-{Stealth[length=2mm]}, thick}
+]
+\node[box, fill=blue!18] (in) {Fact and retrieved passages};
+\node[box, fill=green!25, below=of in] (clean) {NFKC, HTML unescape, strip tags};
+\node[box, fill=orange!30, below=of clean] (tok) {Casefold, drop stop words, Porter stem};
+\node[box, fill=yellow!40, below=of tok] (title) {Remove page-title tokens};
+\node[font=\footnotesize, text=red, anchor=west, align=left, text width=3.5cm] (note) at ($(title.east)+(2mm,0)$) {No tokens left: the score is 0};
+\node[box, fill=blue!18, below=of title] (win) {Windows of 8 tokens, stride 4};
+\node[box, fill=green!25, below=of win] (score) {Maximum ROUGE-1 recall};
+\node[box, fill=orange!30, below=of score] (dec) {Supported if the score is at least 3/7};
+\draw[arr] (in) -- (clean);
+\draw[arr] (clean) -- (tok);
+\draw[arr] (tok) -- (title);
+\draw[arr] (title) -- (win);
+\draw[arr] (win) -- (score);
+\draw[arr] (score) -- (dec);
+\end{tikzpicture}
+\caption{Dion: The word-overlap checker scores a fact by the maximum ROUGE-1 recall over 8-token windows and predicts supported when that score is at least 3/7.}
+\end{figure}
+
+\paragraph{Comparison:}
+
+The same tokens were scored with the other overlap measures. Precision divides by the length of the window, so most of a supporting span is other words. ROUGE-2 needs the same pair of words in order, which a reworded date breaks. ROUGE-L keeps order through the longest common subsequence. ROUGE-1 recall asks only whether the fact's own words appear, and it is the score the checker uses.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Score & Full set & Held-out \\
+\midrule
+ROUGE-1 precision & 158/221 (0.715) & \\
+ROUGE-2 recall & 139/221 (0.629) & \\
+ROUGE-L recall & 179/221 (0.810) & 175/221 (0.792) \\
+ROUGE-1 recall & \textbf{183/221 (0.828)} & \textbf{178/221 (0.805)} \\
+\bottomrule
+\end{tabular}
+\caption{Dion: Other overlap scores}
+\label{tab:rouge}
+\end{table}
+
+At the cut of \(3/7\), the checker records the following.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lr@{}}
+\toprule
+ & Result \\
+\midrule
+Correct & 183/221 (0.828) \\
+Supported facts recovered & 94 of 112 \\
+Supported facts missed & 18 \\
+Negative facts labelled supported & 20 of 109 \\
+Precision & 94/114 (0.825) \\
+Recall & 94/112 (0.839) \\
+F1 & 0.832 \\
+Held-out & 178/221 (0.805) \\
+Target & 0.75 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+ROUGE-1 recall is the highest row on the full set and held out. Both clear the target of 0.75, so it is the score this checker keeps.
+
+% ---------------------------------------------------------------------
+\subsection{Normalised BM25 (Shavindu)}
+\label{sec:p1shavindu}
+Jaccard, TF-IDF cosine and ROUGE were already in use, so this checker uses Okapi BM25. The fact is the query and each Wikipedia sentence is a document. The data file is already the output of a BM25 retrieval, which only chooses which paragraphs are available to read. It does not label the fact. The checker below uses BM25 as the label, with a threshold fit on the dev set.
+
+\paragraph{Preprocessing.}
+Tags are stripped, the text is lowercased, and everything that is not a letter or a digit is treated as a space. Years stay as tokens. A fixed list of function words is removed. Negations (\textit{no, not, never, nor}) stay on the list of tokens that are kept, because dropping ``not'' would make a denied claim look like a supported one. The remaining tokens are Porter stemmed. The page title, with any parenthetical such as ``(inventor)'' removed, is tokenised in the same way and those tokens are deleted from the fact. If that deletion leaves nothing, the name is kept, otherwise the score would be zero for a fact that is only a name.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{L{2.4cm} L{4.2cm} Y}
+\toprule
+Step & Choice & Reason \\
+\midrule
+Stop words & Fixed list, negations kept & Function words are in almost every sentence and do not carry the claim. \\
+Stemming & Porter & \textit{founded} and \textit{founding} should match. \\
+Title tokens & Removed from the fact & The name is in every passage about that person, so it inflates unsupported facts. \\
+Evidence unit & Sentence & One supporting sentence is enough. The whole passage was also tried. \\
+\bottomrule
+\end{tabularx}
+\caption{Preprocessing for the BM25 checker.}
+\label{tab:shavindu-prep}
+\end{table}
+
+\paragraph{Score.}
+$N = 1{,}562$ is the number of unique passages in the retrieval file. Document frequency is counted on that file before any label is read. For a term $t$,
+
+\begin{equation}
+\mathrm{idf}(t) = \log\left(\frac{N - \mathrm{df}(t) + 0.5}{\mathrm{df}(t) + 0.5} + 1\right).
+\end{equation}
+
+A term that is missing from the file gets the same formula with $\mathrm{df} = 0$. Let $\mathrm{tf}(t, D)$ be the count of $t$ in sentence $D$, and let $\mathrm{avgdl}$ be the mean sentence length in the same file (12.0 tokens after the cleaning above). With parameters $k_1$ and $b$,
+
+\begin{equation}
+s(D, Q) = \frac{\sum_{t \in Q} \mathrm{idf}(t)\, \dfrac{\mathrm{tf}(t, D)}{\mathrm{tf}(t, D) + k_1 \left(1 - b + b\,|D|/\mathrm{avgdl}\right)}}{\sum_{t \in Q} \mathrm{idf}(t)}.
+\end{equation}
+
+The fact score is the maximum over sentences. Dividing by the sum of the query IDF weights puts the score in $[0, 1]$, so the threshold can be swept in steps of $0.001$ like the other Part~1 scores. This is not binary IDF-recall. A term that occurs once in an average-length sentence contributes $1/(1 + k_1)$ of its IDF weight, and a second occurrence adds less than the first. The $b$ term marks down a sentence that is long relative to $\mathrm{avgdl}$.
+
+\paragraph{What was tuned.}
+With $k_1$ fixed at 1.2, $b$ was tried at 0, 0.25, 0.75 and 1, on sentences and on whole passages. On passages, $k_1$ was also tried at 0.6, 0.9, 1.5 and 2.0 with $b = 0$. Moving $k_1$ across that range changed the dev count by at most one fact. On sentences, $k_1 = 0.9$ with $b = 0.25$ ties the chosen row at 191/221 and the same 99 true supports, so the result is not one lucky cell. $k_1 = 1.2$ is kept. The threshold was fit on all 221 facts. Because that reuses the labels, 5-fold cross-validation with seed 42 refits the threshold on the other folds. A second check holds out whole biographies, so facts about the same person do not sit in both sides of a fold.
+
+On sentences with $k_1 = 1.2$, $b = 0$ scores 189/221, $b = 0.25$ scores 191/221, $b = 0.75$ scores 188/221 and $b = 1$ scores 187/221. A light length penalty helps. The usual default $b = 0.75$ is a bit harsh here, because a Wikipedia sentence that supports a fact is often longer than the fact and the extra words are not errors. Passage-level scoring at the same $k_1$ and $b = 0.25$ also reaches 191/221. The sentence setting is the one kept: supported-class F1 is 0.868 against 0.866 for the passage, and the biography-grouped check is 0.859 against 0.855. The two are close. The sentence checker is not ahead by a margin that would survive a different split.
+
+The submitted setting is sentences, $k_1 = 1.2$, $b = 0.25$, threshold $0.197$. It labels 191 of 221 facts correctly (86.4\%). Seed-42 cross-validation is 0.860. Precision on the supported class is 99/116 = 0.853, recall is 99/112 = 0.884, F1 is 0.868. The 17 false supports include 2 of the 16 irrelevant facts.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+Setting & Correct & Dev. & CV & Grouped & F1 \\
+\midrule
+Sentences, $k_1{=}1.2$, $b{=}0.25$ & 191 & 0.864 & 0.860 & 0.859 & 0.868 \\
+Passages, $k_1{=}1.2$, $b{=}0.25$ & 191 & 0.864 & 0.860 & 0.855 & 0.866 \\
+Sentences, $b{=}0$ & 189 & 0.855 & 0.846 & 0.850 & 0.861 \\
+Sentences, $b{=}0.75$ & 188 & 0.851 & 0.846 & 0.823 & 0.855 \\
+No stop-word removal & 188 & 0.851 & 0.842 & 0.848 & 0.856 \\
+No stemming & 185 & 0.837 & 0.833 & 0.833 & 0.838 \\
+Title tokens kept & 168 & 0.760 & 0.737 & 0.722 & 0.773 \\
+\bottomrule
+\end{tabular}
+\caption{BM25 settings on the 221 facts. CV refits the threshold in 5 folds (seed 42). Grouped holds out biographies. F1 is for the supported class. The $b = 0$ and $b = 0.75$ rows are sentences with $k_1 = 1.2$. The last three rows are the submitted sentence setting with one preprocessing step turned off.}
+\label{tab:shavindu-bm25}
+\end{table}
+
+Removing the title tokens costs 23 facts (191 to 168). Stemming costs 6. Stop-word removal costs 3 on the full set and a bit more under cross-validation (0.860 to 0.842). The name removal is the change that matters most, which matches the idea that the subject string is in nearly every retrieved passage.
+
+\paragraph{Where it goes wrong.}
+``He has worked at Mayo Clinic'' scores 0.432 and is predicted supported. The page says Oliphant has a PhD from the Mayo Clinic, not that he worked there. The content words overlap and BM25 has no slot for the relation. ``He has since then starred in numerous films'' scores 0.161 and is missed. The page names individual films, but it does not say ``starred'' or ``numerous'', so the query terms are mostly absent. A wrong year can still pass: ``The Fischer Research Laboratory was founded in 1936'' scores 0.357 against a sentence that says Fisher Research Laboratory was founded in 1931. \textit{Founded}, \textit{research} and \textit{laboratory} carry the score, and the year does not have to match. The same limit is in the other overlap checkers. IDF-weighted recall remains the Part~1 model in \texttt{factcheck.py}, at 194/221.
+
+% ---------------------------------------------------------------------
+\subsection{Comparison and final model}
+\label{sec:p1final}
+The below table compares each member's best configuration. IDF-weighted recall with name removal and global IDF is the most accurate, so it is the \texttt{WordRecallThresholdFactChecker} in \texttt{factcheck.py}.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{llcc}
+\toprule
+Method & Member & Accuracy & CV \\
+\midrule
+TF-IDF cosine (sentence, stop+stem) & Rumaiz & 0.760 & -- \\
+Jaccard (12-token windows, name removed, stop+stem) & Tamadhi & 0.819 & 0.819 \\
+ROUGE-1 recall (8-token windows) & Dion & 0.828 & 0.805 \\
+BM25 (sentences, $k_1{=}1.2$, $b{=}0.25$) & Shavindu & 0.864 & 0.860 \\
+\textbf{IDF-recall + name removal + global IDF} & Rumaiz & \textbf{0.878} & \textbf{0.869} \\
+\bottomrule
+\end{tabular}
+\caption{Best configuration of each word-overlap method. CV is 5-fold cross-validation; Dion's ROUGE-1 recall uses folds grouped by biography.}
+\label{tab:methods}
+\end{table}
+
+\noindent The final threshold is set to $\theta = 0.457$, the middle of the best range $[0.455, 0.459]$ (all 194/221). It also falls within a stable range where accuracy remains at or above 85\% for values between $0.43$ and $0.53$. In comparison, cosine similarity has a much narrower peak (Figure~\ref{fig:p1}).
+
+\begin{figure}[H]
+\centering
+\safefig{0.49\linewidth}{figures/accuracy_vs_threshold.png}\hfill
+\safefig{0.49\linewidth}{figures/score_distribution.png}
+\caption{Left: accuracy against threshold. Right: score distribution of the final model by gold label.}
+\label{fig:p1}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lccc}
+\toprule
+Class & Precision & Recall & F1 \\
+\midrule
+S  & 0.890 & 0.866 & 0.878 \\
+NS & 0.866 & 0.890 & 0.878 \\
+\bottomrule
+\end{tabular}
+\caption{Final word-overlap model ($\theta=0.457$): accuracy 194/221 = \textbf{87.8\%} (TP 97, FN 15, FP 12, TN 97).}
+\label{tab:p1final}
+\end{table}
+
+\optfig{0.85\linewidth}{figures/terminal_word_overlap.png}{Output of \texttt{python factchecking\_main.py --mode word\_overlap}.}
+
+\paragraph{Limitations:} Bag-of-words matching does not consider word order or relationships between words. It can also miss paraphrases (e.g., \textit{actress} vs \textit{appeared in films}) and may incorrectly support a fact when the same words appear in the evidence but describe a different relationship.
+
+% =====================================================================
+% PART 2: TEXTUAL ENTAILMENT (40%)
+% =====================================================================
+\section{Part 2: Textual Entailment}
+\label{sec:part2}
+
+\subsection{Model and setup}
+All members use \texttt{MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli}, which produces logits for entailment, neutral and contradiction. These are converted into probabilities using softmax, giving $[P(E), P(N), P(C)]$. A test with three text pairs confirmed that the labels are in the expected order. The fact is used as the hypothesis, while the Wikipedia text serves as the premise.
+
+\subsection{Window premises, max \texorpdfstring{$P(E)$}{P(E)} and pruning (Rumaiz)}
+\label{sec:p2rumaiz}
+\paragraph{Passage preprocessing:} Passages are split using \texttt{<s>} markers and sentence punctuation. Extra whitespace is removed, and fragments with fewer than three words (e.g.\ ``Career.'') are discarded. This leaves 5{,}417 premise--fact pairs. Model outputs are cached after the first run, allowing different decision rules, thresholds and pruning settings to be tested without running the model again.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{llcc}
+\toprule
+Premise & Decision rule & $\theta$ & Accuracy \\
+\midrule
+sentence & discrete: any argmax $=$ entailment & -- & 0.810 \\
+sentence & threshold on max $P(E)$ & 0.322 & 0.819 \\
+sentence & threshold on max $[P(E)-P(C)]$ & 0.086 & 0.819 \\
+window & discrete: any argmax $=$ entailment & -- & 0.828 \\
+window & \textbf{threshold on max $P(E)$} & 0.314 & \textbf{0.842} \\
+window & threshold on max $[P(E)-P(C)]$ & 0.303 & 0.837 \\
+\bottomrule
+\end{tabular}
+\caption{Decision strategies (no pruning). A window premise is the previous sentence plus the current sentence.}
+\label{tab:strategies}
+\end{table}
+
+\noindent The \textbf{window} improves every rule, because pronoun sentences (``\emph{He} was born in \dots'') get their referent from the previous sentence. A \textbf{threshold on $P(E)$} beats the discrete rule, which requires $P(E)$ to exceed $P(N)$; subtracting $P(C)$ adds nothing, as contradiction is near zero for the best premise.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{cccccc}
+\toprule
+$\tau$ & Facts pruned & S lost & Calls skipped & $\theta$ & Accuracy \\
+\midrule
+0.00 & 0  & 0  & 0.0\%  & 0.314 & 0.842 \\
+0.05 & 43 & 4  & 17.0\% & 0.314 & 0.864 \\
+\textbf{0.10} & \textbf{44} & \textbf{4} & \textbf{17.2\%} & \textbf{0.314} & \textbf{0.864} \\
+0.15 & 49 & 4  & 19.0\% & 0.164 & 0.864 \\
+0.20 & 57 & 5  & 21.8\% & 0.030 & 0.860 \\
+0.30 & 83 & 11 & 33.1\% & 0.027 & 0.860 \\
+\bottomrule
+\end{tabular}
+\caption{Fact-level pruning with the Part~1 score (window premise, max $P(E)$). ``S lost'' counts supported facts wrongly pruned.}
+\label{tab:pruning}
+\end{table}
+
+% \noindent Pruning \textbf{improves both speed and accuracy}: facts with almost no word overlap are nearly always unsupported, and removing them removes false positives. Above $\tau \approx 0.15$ more supported facts are lost, so $\tau = 0.1$ is used. Pruning individual \emph{sentences} instead hurts (84.2\% $\rightarrow$ 82.4\%), because pronoun sentences have low overlap but are the evidence the model needs.
+
+\noindent Pruning improves both speed and accuracy. Facts with very little word overlap are usually unsupported, so removing them also helps reduce false positives. However, when $\tau$ goes above approximately $0.15$, more supported facts are lost. Therefore, $\tau = 0.1$ is used. Pruning individual \emph{sentences} has the opposite effect, reducing accuracy from 84.2\% to 82.4\%. This is because sentences containing pronouns may have little word overlap but still provide useful evidence for the model.
+
+% ---------------------------------------------------------------------
+\subsection{Sentence, pair, and passage entailment (Dion)}
+\label{sec:p2dion}
+
+The Part 1 ROUGE-1 recall is reused as a gate. A premise that clears it is then scored by the shared model's entailment probability, so support requires a span that both overlaps the fact and is entailed by it. The tables show which premises and which decision rule produce that gain over overlap alone.
+
+\paragraph{Premises:}
+
+The passage is split before it is cleaned, so the sentence markers are still present. Character repair is the Part 1 step (NFKC, HTML unescape, tags to spaces) and is not repeated here. Case stays as written, because the model uses it. A casefolded copy is used only to spot a duplicate or a boilerplate line.
+
+\begin{center}
+\small
+\begin{tabular}{@{}llp{7.6cm}@{}}
+\toprule
+Step & Choice & Reason \\
+\midrule
+Split & On \texttt{<s>}\ldots\texttt{</s>}, before cleaning & The markers are the sentence boundaries. No tags means one chunk. \\
+Repair & Same as Part 1 & NFKC, HTML unescape, and tags to spaces. \\
+Case & Left as written & Casefold is only the duplicate and boilerplate check. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{itemize}\setlength{\itemsep}{0.4em}
+\item \textbf{Short and boilerplate sentences.}
+A sentence under eight characters is dropped, as is a repeat, and the lines \texttt{references.}, \texttt{see also.}, \texttt{external links.}, and \texttt{notes.}
+Those lines are section headings. This removes 33 short sentences and 16 boilerplate lines, with 0 repeats.
+\item \textbf{Sentences, pairs, and the passage.}
+Each passage then gives its kept sentences, each adjacent pair, and the passage cut at 1500 characters.
+Sentences with the passage score 184/221 (0.833). Dropping the passage falls to 175/221 (0.792). Pairs alone score 143/221 (0.647).
+\item \textbf{Title prefix.}
+When the title is missing from the premise, it is added as \texttt{Title.} so a pronoun has a referent.
+That prefixes 1006 premises. Without it the score is 182/221 (0.824), with precision 0.910, recall 0.723, 31 misses, and 8 false supports.
+\item \textbf{Overlap and the cap.}
+Each premise is ranked by the Part 1 ROUGE-1 recall, with the title tokens removed, on that premise as one bag. Premises below 0.30 are dropped and the rest are capped.
+There are 1976 premises before the gate. A cap of 8 already scores 186/221 on 607 premises, so 48 is only a bound.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}lr@{}}
+\toprule
+ & Value \\
+\midrule
+Short sentences dropped & 33 \\
+Boilerplate lines dropped & 16 \\
+Repeated sentences dropped & 0 \\
+Sentences & 988 \\
+Adjacent pairs & 296 \\
+Passage premises & 692 \\
+Premises before the gate & 1976 \\
+Title prefixes & 1006 \\
+\bottomrule
+\end{tabular}
+\caption{Dion: Part 2 premise counts}
+\label{tab:premcounts}
+\end{table}
+
+\paragraph{Word-overlap pruning:}
+
+A premise below the overlap gate is not sent to the model. Every row uses the maximum-probability rule and the cut 0.25. Precision, recall, and F1 in Table~\ref{tab:prune} are for the supported class on the full set.
+
+No skip scores 179/221 (0.810) and sends all 1976 premises. A gate of 0.15 scores 185/221 (0.837). The gate of 0.30 scores 186/221 (0.842) on 627 premises, so it is kept: it is the most accurate row, and supported precision rises from 0.802 to 0.914. Recall falls from 0.830 to 0.759. That loss is the 10 supported facts, out of 76, that have no premise left. The other 66 are not supported and are rejected with no model call.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+Setting & Cut & Accuracy & P & R & F1 & Pairs \\
+\midrule
+No skip & 0.000 & 0.810 & 0.802 & 0.830 & 0.816 & 1976 \\
+Overlap & 0.150 & 0.837 & 0.888 & 0.777 & 0.829 & 851 \\
+Overlap & 0.300 & \textbf{0.842} & 0.914 & 0.759 & 0.829 & 627 \\
+\bottomrule
+\end{tabular}
+\caption{Dion: Overlap gate}
+\label{tab:prune}
+\end{table}
+
+\paragraph{Scoring:}
+
+Let \(P(f)\) be the premises that survive the gate and the cap, and let \(\pi(p,f)\) be the entailment probability from the shared softmax, kept even when another class is larger.
+
+\begin{equation}
+s(f)=\max_{p\in P(f)}\pi(p,f)
+\end{equation}
+
+The checker predicts supported when \(s(f)\) is at least 0.25, and not supported when \(P(f)\) is empty or the maximum falls short. On all 221 facts that cut scores
+
+\[
+\frac{186}{221}=0.842
+\]
+
+85 of 112 supported facts are recovered, 27 are missed, and 8 of 109 negative facts are labelled supported. Precision is \(85/93=0.914\), recall is \(85/112=0.759\), and F1 is 0.829. Held out, the refit cut scores \(182/221=0.824\). The target is 0.83.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}lr@{}}
+\toprule
+ & Value \\
+\midrule
+Accuracy & 186/221 (0.842) \\
+True supports & 85/112 \\
+Misses & 27 \\
+False supports & 8/109 \\
+Precision & 85/93 (0.914) \\
+Recall & 85/112 (0.759) \\
+F1 & 0.829 \\
+Pairwise probability & 0.887 \\
+Held-out accuracy & 182/221 (0.824) \\
+Target & 0.83 \\
+\bottomrule
+\end{tabular}
+\caption{Dion: Part 2 score}
+\label{tab:p2score}
+\end{table}
+
+\paragraph{Decision rules:}
+
+The three rules use the same premises, the same gate of 0.30, and the same cap of 48 (Table~\ref{tab:rules}). The maximum-probability rule is kept. Any entailment label scores 182/221 (0.824), and the label of the highest-overlap premise scores 172/221 (0.778). The discrete rule has the same 8 false supports and 31 misses, four more than the probability rule. Those four facts reach 0.25 on the entailment probability while no premise has entailment as its largest class. The highest-overlap label is weaker because the premise with the most shared words is often neutral. The other two rules have no cut, so their held-out cells are blank.
+
+\begin{table}[H]
+\centering
+{\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Rule & Cut & Accuracy & Held-out accuracy & P & R & F1 \\
+\midrule
+Maximum probability & 0.250 & \textbf{0.842} & 0.824 & 0.914 & 0.759 & 0.829 \\
+Any entailment label & & 0.824 & & 0.910 & 0.723 & 0.806 \\
+Highest-overlap label & & 0.778 & & 0.909 & 0.625 & 0.741 \\
+\bottomrule
+\end{tabular}}
+}
+\caption{Dion: Decision rules}
+\label{tab:rules}
+\end{table}
+
+\paragraph{Premise choices:}
+
+A blank cell means that kind of premise is off. Every row in Table~\ref{tab:kinds} uses the maximum-probability rule, the probability cut of 0.25, and the overlap gate of 0.30. The chosen list is the only row at the full count. Dropping the passage costs the most. A cap of 4 scores 185/221 (0.837), one fact behind, while a cap of 8 already matches the chosen count, so 48 is a bound rather than the source of the accuracy.
+
+\begin{table}[H]
+\centering
+{\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}ccccrrrrr@{}}
+\toprule
+Sentence & Pair & Passage & Cap & Accuracy & P & R & F1 & Pairs \\
+\midrule
+\ck & \ck & \ck & 48 & \textbf{0.842} & 0.914 & 0.759 & 0.829 & 627 \\
+ & \ck & \ck & 48 & 0.828 & 0.911 & 0.732 & 0.812 & 382 \\
+\ck & & \ck & 48 & 0.833 & 0.912 & 0.741 & 0.818 & 525 \\
+\ck & \ck & & 48 & 0.792 & 0.923 & 0.643 & 0.758 & 347 \\
+\ck & \ck & \ck & 4 & 0.837 & 0.913 & 0.750 & 0.824 & 472 \\
+\bottomrule
+\end{tabular}}
+}
+\caption{Dion: Premise kinds}
+\label{tab:kinds}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=3.4mm,
+  box/.style={draw, rounded corners=2pt, align=center, font=\footnotesize, inner sep=2.5pt, text width=7.6cm, minimum height=6.6mm},
+  dec/.style={draw, diamond, aspect=2.6, align=center, font=\footnotesize, inner sep=1pt, text width=3.5cm, fill=yellow!40},
+  side/.style={draw, rounded corners=2pt, align=center, font=\footnotesize, inner sep=2pt, text width=3.3cm, fill=pink!30, minimum height=6.6mm},
+  arr/.style={-{Stealth[length=2mm]}, thick}
+]
+\node[box, fill=blue!18] (in) {Retrieved passages};
+\node[box, fill=green!25, below=of in] (split) {Split on \texttt{<s>}, then clean each chunk};
+\node[box, fill=orange!30, below=of split] (noise) {Drop short lines and boilerplate};
+\node[dec, below=of noise] (titleq) {Title already in the text?};
+\node[side, right=3mm of titleq] (prefix) {Prefix the page title};
+\node[box, fill=purple!25, below=of titleq] (build) {Sentence, adjacent pair, and passage};
+\node[dec, below=of build] (gate) {ROUGE-1 recall at least 0.30?};
+\node[side, right=3mm of gate] (drop) {Drop the premise};
+\node[box, fill=yellow!40, below=of gate] (batch) {At most 48 premises, batches of 8, truncate at 512};
+\node[box, fill=blue!18, below=of batch] (nli) {DeBERTa-v3 entailment probability};
+\node[box, fill=green!25, below=of nli] (mx) {Maximum probability};
+\node[dec, below=of mx] (cut) {At least 0.25?};
+\node[side, fill=pink!30, below left=2mm and -8mm of cut] (yes) {Supported};
+\node[side, fill=pink!30, below right=2mm and -8mm of cut] (no) {Not supported};
+\draw[arr] (in) -- (split);
+\draw[arr] (split) -- (noise);
+\draw[arr] (noise) -- (titleq);
+\draw[arr] (titleq) -- node[left, font=\scriptsize] {yes} (build);
+\draw[arr] (titleq) -- node[above, font=\scriptsize] {no} (prefix);
+\draw[arr] (prefix.south) |- (build.north);
+\draw[arr] (build) -- (gate);
+\draw[arr] (gate) -- node[left, font=\scriptsize] {yes} (batch);
+\draw[arr] (gate) -- node[above, font=\scriptsize] {no} (drop);
+\draw[arr] (drop.east) -- ++(4mm,0) |- (build.east);
+\draw[arr] (batch) -- (nli);
+\draw[arr] (nli) -- (mx);
+\draw[arr] (mx) -- (cut);
+\draw[arr] (cut) -- node[left, font=\scriptsize] {yes} (yes);
+\draw[arr] (cut) -- node[right, font=\scriptsize] {no} (no);
+\end{tikzpicture}
+\caption{Dion: The entailment checker builds sentence, pair, and passage premises, drops those below a ROUGE-1 recall of 0.30, and predicts supported when the maximum entailment probability is at least 0.25. The overlap score drawn in the gate is the Part 1 score on each premise, with the title tokens removed.}
+\end{figure}
+
+% ---------------------------------------------------------------------
+\subsection{BM25 gate, then sentence entailment (Shavindu)}
+\label{sec:p2shavindu}
+The premises here are single sentences. Passages are split on the \texttt{<s>} tags and then on \texttt{.!?}. A piece with fewer than three words is dropped. The fact is the hypothesis. Two-sentence windows are not built, so a sentence that starts with ``He'' does not inherit the name from the line above.
+
+Each sentence is also given the Part~1 BM25 score ($k_1 = 1.2$, $b = 0.25$, title tokens removed). If the best sentence for a fact scores under $0.05$, the fact is labelled NS and the model is not run. $0.05$ is well below the Part~1 decision threshold of $0.197$, so this is only a filter for facts with almost no content-word overlap. It removes 47 of the 221 facts and 977 of the 5{,}412 sentences, and leaves 4{,}435 sentences for DeBERTa. The fact score is the maximum entailment probability on the sentences that remain. The cut is $0.33$.
+
+That labels 186 of 221 facts correctly (84.2\%): 86 true supports, 9 false supports, 26 misses and 100 correct rejects. Supported precision is $86/95 = 0.905$ and recall is $86/112 = 0.768$. The count is the same at $0.325$. From $0.30$ to $0.35$ it stays between 184 and 186, so the cut is not a one-step spike.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Setting & Correct & $P$ & $R$ & Model calls \\
+\midrule
+No gate, max $P(E)$, cut $0.33$ & 181 & 0.846 & 0.786 & 5412 \\
+Gate $0.05$, max $P(E)$, cut $0.33$ & \textbf{186} & 0.905 & 0.768 & 4435 \\
+Gate $0.10$, max $P(E)$, cut $0.33$ & 184 & 0.912 & 0.741 & 3832 \\
+Best BM25 sentence only, cut $0.05$ & 168 & 0.839 & 0.652 & 221 \\
+\bottomrule
+\end{tabular}
+\caption{Sentence-level entailment. $P$ and $R$ are for the supported class. The gate is a minimum BM25 score; a fact under it is labelled NS with no model call. ``Best BM25 sentence only'' ignores every sentence except the one with the highest BM25.}
+\label{tab:shavindu-p2}
+\end{table}
+
+Without the gate, the same cut of $0.33$ scores 181/221 (88 true supports, 16 false supports). The gate at $0.05$ removes 7 false supports and 2 true ones, a net gain of five facts. Raising the gate to $0.10$ scores 184/221: three more supported facts are dropped and one more false support is removed. Using only the single highest-BM25 sentence scores 168/221. The sentence with the most word overlap is often not a sentence the model can judge, so the max over the gated sentences is the better rule.
+
+Refitting the cut in 5 folds (seed 42), with the gate held at $0.05$, gives $0.814$. Two of the folds select a cut near $0.05$, which calls a fact supported on a very small probability, and that choice does not hold up on the held-out fold. Keeping the search inside the flat part of the dev curve, cuts from $0.20$ to $0.50$, the same folds score $0.833$.
+
+This checker is not the one in \texttt{factcheck.py}. The window model scores 191/221. One reason for the gap is a pronoun sentence: the evidence can read ``He was born\ldots'' while the person's name is only in the sentence before, and this checker never joins the two.
+
+% ---------------------------------------------------------------------
+\subsection{Jaccard ranking and Jaccard pruning (Tamadhi)}
+\label{sec:p2tamadhi}
+This checker reuses the Part~1 Jaccard score (Section~\ref{sec:p1tamadhi}) in two places. First, it ranks the sentences of a fact so that only the top $K$ are sent to the model. Second, it prunes a fact before any model call when its overlap is below $\tau$. Premises are built the same way as in Section~\ref{sec:p2rumaiz}: passages are split on \texttt{<s>} markers and sentence punctuation, pieces with fewer than three words are dropped, and a window premise is the previous sentence plus the current one. Both single sentences and windows were run through the model once (944\,s for both on CPU) and cached. $K$, the decision rule and $\tau$ were then tuned from the cache.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{L{3.0cm} L{4.6cm} Y}
+\toprule
+Step & Choice & Reason \\
+\midrule
+Jaccard tokens & Lowercase, strip tags and punctuation, short stop list (negations kept), Porter stem & Same idea as Part~1, so \textit{not} still counts. \\
+Ranking & Jaccard of the fact with each single sentence & Decides which $K$ premises reach the model. \\
+Premise & Sentence or two-sentence window & The window gives a pronoun its referent. \\
+Rules tested & max $P(E)$, mean of top-2 $P(E)$, max $[P(E)-P(C)]$ & One supporting premise should be enough. \\
+$K$ tested & 1, 3, 5, 8, 20 and all sentences & Fewer premises means fewer model calls. \\
+Pruning signal & Whole-passage Jaccard, or best single-sentence Jaccard & Both tried (Table~\ref{tab:tam-prune}). \\
+\bottomrule
+\end{tabularx}
+\caption{Tamadhi: settings of the Jaccard-based entailment checker.}
+\label{tab:tam-setup}
+\end{table}
+
+\paragraph{Check against the shared pipeline:} With window premises, max $P(E)$, every sentence and no pruning, this notebook scores 186/221 (0.842) at $\theta = 0.314$, and the best plateau is $[0.314, 0.336]$. Both numbers are exactly the no-pruning window row in Table~\ref{tab:strategies} and the plateau used for the final model. The two notebooks were written separately, so this confirms that the premises and the cached probabilities are the same.
+
+\paragraph{Ranking by Jaccard (top-$K$):} Of the 24 settings in the grid (two premise types, $K \in \{1,3,5,8\}$, three rules), the best was window premises, $K = 5$, max $P(E)$. Allowing more sentences still helps (Table~\ref{tab:tam-k}). With $K = 5$ the model sees at most $5 \times 221 = 1{,}105$ pairs, about a fifth of all pairs, and accuracy drops by 2.3 points. The ranking uses the Jaccard of the single sentence, so a sentence such as ``\emph{He} was born in \dots'' ranks low even when it is the evidence. This is the same effect that made sentence-level pruning worse in Section~\ref{sec:p2rumaiz}.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+Premises sent to the model & Pairs (upper bound) & $\theta$ & Accuracy \\
+\midrule
+Top 5 by Jaccard  & 1{,}105 & 0.225 & 0.819 \\
+Top 20 by Jaccard & 4{,}420 & 0.225 & 0.824 \\
+\textbf{All sentences} & all & \textbf{0.314} & \textbf{0.842} \\
+\bottomrule
+\end{tabular}
+\caption{Tamadhi: effect of keeping only the top-$K$ Jaccard sentences (window premises, max $P(E)$, no pruning).}
+\label{tab:tam-k}
+\end{table}
+
+\paragraph{Pruning signal:} Table~\ref{tab:tam-prune} compares the two signals. Whole-passage Jaccard is diluted, because the union with a passage of a few hundred tokens is large, so even supported facts score only around $0.03$. That value was the Part~1 Jaccard threshold, so at $\tau = 0.03$ pruning becomes the weak Part~1 classifier and removes 24 supported facts. The best single-sentence Jaccard is much safer: up to $\tau = 0.06$ it prunes 14 facts and loses only one supported fact. Above $\tau = 0.08$ supported facts start to be lost and accuracy falls. At large $\tau$ almost every fact is pruned, so the tuned $\theta$ values in that range (0.990, 0.001) mean nothing.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}ccccc@{\hspace{8mm}}ccccc@{}}
+\toprule
+\multicolumn{5}{c}{Whole-passage Jaccard ($K=5$)} & \multicolumn{5}{c}{Best-sentence Jaccard (all sentences)} \\
+\cmidrule(r{8mm}){1-5}\cmidrule{6-10}
+$\tau$ & Pruned & S lost & Skipped & Acc & $\tau$ & Pruned & S lost & Skipped & Acc \\
+\midrule
+0.00 & 0   & 0   & 0.0\%  & 0.819 & 0.00 & 0   & 0  & 0.0\%  & 0.842 \\
+0.01 & 13  & 1   & 4.3\%  & 0.819 & 0.02 & 10  & 1  & 2.7\%  & 0.842 \\
+0.02 & 39  & 2   & 12.6\% & \textbf{0.824} & \textbf{0.06} & \textbf{14} & \textbf{1} & \textbf{4.9\%} & \textbf{0.842} \\
+0.03 & 89  & 24  & 37.4\% & 0.801 & 0.08 & 25  & 4  & 8.4\%  & 0.837 \\
+0.04 & 147 & 61  & 62.6\% & 0.670 & 0.10 & 42  & 10 & 15.2\% & 0.828 \\
+0.05 & 167 & 76  & 72.3\% & 0.615 & 0.12 & 58  & 17 & 21.4\% & 0.801 \\
+0.07 & 204 & 102 & 90.8\% & 0.525 & 0.15 & 99  & 34 & 39.0\% & 0.760 \\
+0.10 & 217 & 110 & 98.2\% & 0.498 & 0.20 & 139 & 55 & 58.2\% & 0.715 \\
+\bottomrule
+\end{tabular}
+\caption{Tamadhi: fact-level pruning with two Jaccard signals (window premises, max $P(E)$, $\theta$ retuned for each row). ``Skipped'' is the share of all premise--fact pairs belonging to pruned facts.}
+\label{tab:tam-prune}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\safefig{0.85\linewidth}{figures/tamadhi_pruning.png}
+\caption{Tamadhi: dev accuracy against the share of premise--fact pairs skipped by pruning, for the two Jaccard signals. The IDF-recall ($\tau = 0.1$) and BM25 (gate 0.05) pruning points are shown for comparison.}
+\label{fig:tam-prune}
+\end{figure}
+
+\paragraph{Why Jaccard pruning does not raise accuracy:} Pruning with IDF-recall raises accuracy from 0.842 to 0.864 (Table~\ref{tab:pruning}), and the BM25 gate removes 7 false supports (Section~\ref{sec:p2shavindu}). Jaccard pruning never goes above the no-pruning score. Both of the other scores delete the subject's name and weight rare words more. Jaccard keeps the name and gives every token the same weight. A fact such as ``Kerser is a songwriter'' therefore still shares \textit{kerser} with many sentences and is never pruned, even though nothing about songwriting is in the passage. The 14 facts pruned at $\tau = 0.06$ had already been rejected by the model, so the confusion matrix is unchanged from no pruning (TP 96, FN 16, FP 19, TN 90). This matches the no-pruning model in Section~\ref{sec:p2final}: from its 191/221, adding back the 7 removed false positives and the 2 added false negatives gives the same counts.
+
+\paragraph{Final setting:} The kept setting is window premises, all sentences, max $P(E)$, best-sentence Jaccard pruning at $\tau = 0.06$ and $\theta = 0.314$. It gets 186/221 (84.2\%), above the 83\% target, while skipping 4.9\% of model calls. Accuracy stays at or above 83\% for $\theta \in [0.199, 0.444]$. This range is narrower than the final model's range because low-overlap unsupported facts are not removed, so they are accepted as soon as $\theta$ is lowered. The prediction flow is the same as the final checker's (Figure~\ref{fig:p2flow}), except that the gate is the best single-sentence Jaccard and the cut is $\theta = 0.314$. In 5-fold cross-validation (seed 42) the mean is $0.828 \pm 0.019$ (Table~\ref{tab:tam-cv}). Folds 2 and 4 pick a lower $\theta$ (0.199 and 0.225) and score less on their held-out fold, the same pattern as in Section~\ref{sec:p2shavindu}.
+
+\begin{table}[H]
+\centering
+\begin{minipage}[c]{0.44\linewidth}
+\centering
+\small
+\begin{tabular}{ccc}
+\toprule
+Fold & $\theta$ & Held-out acc \\
+\midrule
+1 & 0.314 & 0.844 \\
+2 & 0.199 & 0.818 \\
+3 & 0.314 & 0.841 \\
+4 & 0.225 & 0.795 \\
+5 & 0.314 & 0.841 \\
+\midrule
+Mean & & $0.828 \pm 0.019$ \\
+\bottomrule
+\end{tabular}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.52\linewidth}
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+Class & Precision & Recall & F1 \\
+\midrule
+S  & 0.835 & 0.857 & 0.846 \\
+NS & 0.849 & 0.826 & 0.837 \\
+\midrule
+\multicolumn{4}{l}{TP 96, FN 16, FP 19, TN 90} \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\caption{Tamadhi: 5-fold cross-validation (left) and per-class results at $\tau = 0.06$, $\theta = 0.314$ (right).}
+\label{tab:tam-cv}
+\end{table}
+
+\paragraph{Remaining errors:} Most of the 19 false positives are the same kind as those analysed in Part~3: topical overlap without the claimed relation (``Trivisonno worked at WKNR'', ``He has worked at Mayo Clinic'') and vague claims (``He has worked as a researcher at various organizations''). This is expected, since the model and premises are the same. The extra false positives are short facts whose only overlap is the name, such as ``Kerser is a songwriter'', ``Marianne McAndrew is a singer'' and ``Bertotti is a talented performer''. None of them is among the false positives examined in Part~3, which points to name removal in the pruning score as the change that fixes them. The false negatives are the same list and bibliography cases (the Katsu novels, ``With CSKA, he won domestic titles'') and the \textit{Fischer}/\textit{Fisher} spelling.
+
+\paragraph{Summary:} Jaccard is useful as a safe filter: at $\tau \le 0.06$ it removes a few hopeless facts without losing accuracy. It is not useful for ranking premises or for removing false positives, because it does not remove the subject's name or weight rare words. For this reason the final checker uses the IDF-recall score for pruning (Section~\ref{sec:p2final}).
+
+% ---------------------------------------------------------------------
+\subsection{Comparison and final model}
+\label{sec:p2final}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{llc}
+\toprule
+Approach & Member & Accuracy \\
+\midrule
+Sentence, pair and passage, max $P(E)$ & Dion & 0.842 \\
+BM25 gate $0.05$, sentence max $P(E)$ & Shavindu & 0.842 \\
+Window premises, max $P(E)$, Jaccard pruning $\tau=0.06$ & Tamadhi & 0.842 \\
+\textbf{Window premises, max $P(E)$, pruning $\tau=0.1$} & Rumaiz & \textbf{0.864} \\
+\bottomrule
+\end{tabular}
+\caption{Best entailment configuration of each member (dev accuracy, $n=221$).}
+\label{tab:p2methods}
+\end{table}
+
+% \noindent The final \texttt{EntailmentFactChecker} uses window premises, max $P(E)$, pruning at $\tau=0.1$ and $\theta=0.325$, the centre of the optimal plateau $[0.314, 0.336]$; accuracy is at least 83\% for any $\theta \in [0.02, 0.78]$, and 5-fold CV accuracy is $85.5\% \pm 2.3$. Figure~\ref{fig:p2flow} shows how it predicts.
+\noindent The final \texttt{EntailmentFactChecker} uses window premises, max $P(E)$, pruning with $\tau=0.1$ and a threshold of $\theta=0.325$. This threshold is chosen from the middle of the best-performing range, $[0.314, 0.336]$. Accuracy remains at or above 83\% across a much wider range of $\theta$ values, from $0.02$ to $0.78$. The 5-fold cross-validation accuracy is $85.5\% \pm 2.3$. Figure~\ref{fig:p2flow} shows the steps followed when making a prediction.
+
+\begin{figure}[!htb]
+\centering
+\safefig{0.55\linewidth}{figures/part2_checker.png}
+\caption{Prediction flow of the final \texttt{EntailmentFactChecker}.}
+\label{fig:p2flow}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lccc}
+\toprule
+Class & Precision & Recall & F1 \\
+\midrule
+S  & 0.887 & 0.839 & 0.862 \\
+NS & 0.843 & 0.890 & 0.866 \\
+\bottomrule
+\end{tabular}
+\caption{Final entailment model: accuracy 191/221 = \textbf{86.4\%} (TP 94, FN 18, FP 12, TN 97).}
+\label{tab:p2final}
+\end{table}
+
+% \paragraph{Efficiency and memory.} Inference runs under \texttt{torch.no\_grad()} in batches of 16 (inputs truncated to 512 tokens), tensors are freed after each batch, and a fact is predicted S as soon as a batch reaches $\theta$ (early exit). Table~\ref{tab:runtime} compares full runs with and without pruning (MacBook Air, CPU only). Pruning makes prediction 21\% faster and removes 7 false positives while adding 2 false negatives; peak memory stays below 1.7\,GB.
+\paragraph{Efficiency and memory:} The model runs inference using \texttt{torch.no\_grad()} with batches of 16, and inputs are limited to 512 tokens. Tensors are cleared after each batch, and a fact is classified as S as soon as its score reaches $\theta$ (early exit). The table below compares the full model runs with and without pruning on a CPU-only MacBook Air. Pruning reduces prediction time by 21\%, removes 7 false positives and adds 2 false negatives. Peak memory usage remains below 1.7\,GB. With pruning and early exit together, only 3{,}394 of the 5{,}417 premise--fact pairs are sent to the model (37\% skipped), compared with 4{,}186 with early exit alone.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+Setting & Accuracy & Prediction loop & Total & Peak memory \\
+\midrule
+No pruning ($\tau=0$) & 84.2\% & 232\,s & 263\,s & 1{,}604\,MiB \\
+Pruning ($\tau=0.1$) & \textbf{86.4\%} & \textbf{183\,s} & \textbf{216\,s} & 1{,}313\,MiB \\
+\bottomrule
+\end{tabular}
+\caption{Measured effect of pruning (prediction loop excludes model loading).}
+\label{tab:runtime}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.82\linewidth}
+\centering
+\safefig{\linewidth}{figures/terminal_entailment.png}
+\caption{Final model, pruning $\tau = 0.1$: 191/221.}
+\end{subfigure}
+
+\vspace{4pt}
+\begin{subfigure}{0.82\linewidth}
+\centering
+\safefig{\linewidth}{figures/terminal_entailment_noprune.png}
+\caption{Without pruning ($\tau = 0$): 186/221.}
+\end{subfigure}
+\caption{Output of \texttt{/usr/bin/time -l python factchecking\_main.py --mode entailment}}
+\label{fig:term2}
+\end{figure}
+
+% \paragraph{Comparison with Part 1:} The tuned lexical model (87.8\%) slightly outperforms entailment (86.4\%) on this dev set. The NLI model handles paraphrase and pronouns but over-trusts topical similarity (Section~\ref{sec:part3}).
+\paragraph{Comparison with Part 1:} The tuned lexical model achieves slightly higher accuracy (87.8\%) than the entailment model (86.4\%) on the dev set. However, the NLI model is better at handling paraphrases and pronouns, although it can sometimes treat topical similarity as evidence of support (Section~\ref{sec:part3}).
+
+\newpage
+% =====================================================================
 % PART 3: ERROR ANALYSIS
 % Data: Task_B/rumaiz_entailment/entailment_errors.json (30 errors)
 % =====================================================================
 \section{Part 3: Error Analysis}
 \label{sec:part3}
-Each ChatGPT biography is split into short facts, and each fact is checked against Wikipedia passages. Facts are labelled \textbf{S} (supported), \textbf{NS} (not supported) or \textbf{IR} (irrelevant); IR is counted as NS.
-
-\medskip
-We analyse the mistakes of our entailment checker. It uses DeBERTa-v3 on two-sentence premises and labels a fact S if its highest entailment probability $P(E)$ is at least $\theta = 0.325$. Facts with a word-overlap score below $\tau = 0.1$ are labelled NS without running the model (pruning). It gets 86.4\% accuracy (191/221); Parts~1 and~2 are described in Appendix~\ref{sec:part1} and Appendix~\ref{sec:part2}.
+We analyse the mistakes of our entailment checker. It uses DeBERTa-v3 on two-sentence premises and labels a fact S if its highest entailment probability $P(E)$ is at least $\theta = 0.325$. Facts with a word-overlap score below $\tau = 0.1$ are labelled NS without running the model (pruning). It gets 86.4\% accuracy (191/221); Parts~1 and~2 are described in Sections~\ref{sec:part1} and~\ref{sec:part2}.
 
 The checker makes \textbf{30 errors}: 12 false positives (FP) and 18 false negatives (FN). We examined 10 of each by reading the fact, the best premise and the full passages. We left out near-repeats and three likely labelling or retrieval problems, which are discussed in Section~\ref{sec:noise}.
 
@@ -282,6 +1314,7 @@ Total & 10 & 10 & 20 \\
 \subsection{Detailed examples}
 \label{sec:examples}
 
+\needspace{8\baselineskip}
 \paragraph{Example 1: topical overlap without the claimed relation (FP5).}
 \begin{itemize}[leftmargin=1.2em]
 \item[(a)] \textbf{Fact:} ``Trivisonno worked at WKNR.''\\
@@ -293,6 +1326,7 @@ Total & 10 & 10 & 20 \\
 \item[(e)] \textbf{Why it was wrong:} Trivisonno and WKNR appear together in his radio career, but WKNR was the \emph{rival} station his show competed against, not his employer. The model relies on both being mentioned together instead of checking the \emph{worked at} relationship.
 \end{itemize}
 
+\needspace{8\baselineskip}
 \paragraph{Example 2: surface-form mismatch amplified by pruning (FN9).}
 \begin{itemize}[leftmargin=1.2em]
 \item[(a)] \textbf{Fact:} ``Florencia Bertotti is an Argentinian.''\\
@@ -311,6 +1345,7 @@ Total & 10 & 10 & 20 \\
 \label{fig:prunetrace}
 \end{figure}
 
+\needspace{8\baselineskip}
 \paragraph{Example 3: evidence in non-sentential text (FN5).}
 \begin{itemize}[leftmargin=1.2em]
 \item[(a)] \textbf{Fact:} ``The Hunger is a novel by Katsu.''\\
@@ -345,605 +1380,21 @@ Total & 10 & 10 & 20 \\
 \end{itemize}
 
 % =====================================================================
-% PART 1: WORD OVERLAP (40%)
-% Each member has their own subsection. The final model used in factcheck.py
-% is chosen in "Comparison and final model".
+% CONCLUSION
 % =====================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+A carefully designed lexical baseline (IDF-weighted recall with subject-name removal and corpus-level IDF) reaches 87.8\%, slightly above the neural entailment model (86.4\%) on this small dev set. The two make different kinds of errors: word overlap cannot detect relational mismatches or paraphrase, while the NLI model over-trusts topical similarity and struggles with list-formatted evidence. Combining them, by pruning with word overlap before running entailment, improves both accuracy and efficiency. The error analysis suggests the next gains would come from normalising surface forms before pruning and turning lists into sentences, rather than from further threshold tuning.
+
+
 \newpage
 \appendix
-\section{Part 1: Word Overlap}
-\label{sec:part1}
-\subsection{Overview and evaluation protocol}
-\label{sec:intro}
-In Part~1, an IDF-weighted word-recall classifier removes subject names and calculates IDF across the full corpus. It achieves an accuracy of \textbf{87.8\%}, with 86.9\% in 5-fold cross-validation, exceeding the 75\% target. Part~2 uses a DeBERTa-v3 NLI model with two-sentence premise windows and word-overlap pruning. It achieves \textbf{86.4\%} accuracy (85.5\% in 5-fold cross-validation), surpassing the 83\% target while reducing the number of model calls by around 37\%.
-
-\medskip
-All methods are evaluated in the same way: a fact is classified as S if its score is $\geq \theta$. The threshold $\theta$ is selected by grid search over $[0,1]$ in steps of $0.001$, choosing the value with the highest accuracy. Since tuning and evaluation use the same development set, we also report 5-fold cross-validation accuracy ($\theta$ tuned on 4 folds and tested on the remaining fold, using seed 42), along with how accuracy varies across different threshold values.
-
-\begin{figure}[H]
-\centering
-\safefig{\linewidth}{figures/pipeline_overview.png}
-\caption{Overview of the two fact checkers. Part~2 reuses the Part~1 overlap score as a pruning filter before running the NLI model.}
-\label{fig:overview}
-\end{figure}
-
-Each group member implemented and tuned a different overlap metric under the evaluation protocol of Section~\ref{sec:intro}. The best-performing method is used in \texttt{factcheck.py} (Section~\ref{sec:p1final}).
-
-% ---------------------------------------------------------------------
-\subsection{TF-IDF and IDF-weighted recall (Rumaiz)}
-\label{sec:p1rumaiz}
-
-\paragraph{Preprocessing:} Text is converted to lowercase, \texttt{<s>} markup is removed, and punctuation is replaced with spaces. Digits are kept because years can be important when checking facts. The table below shows the other preprocessing choices, which are each tested in the ablation study below.
-
-\begin{table}[H]
-\centering
-\begin{tabularx}{\linewidth}{L{2.2cm} L{4.6cm} Y}
-\toprule
-Step & Choice & Reason \\
-\midrule
-Stopwords & spaCy list \emph{minus} negations (\textit{no, not, never, \dots}) & Removes function words that inflate overlap; keeping negations stops ``did \emph{not} win'' matching ``won''. \\
-Stemming & Porter & Matches variants (\textit{acting, acted $\rightarrow$ act}). \\
-N-grams & Unigrams & Bigrams lowered accuracy (refer below table). \\
-Evidence unit & Sentence or passage & Both evaluated. \\
-\bottomrule
-\end{tabularx}
-\caption{Preprocessing choices.}
-\label{tab:prep}
-\end{table}
-
-\paragraph{Scoring:} Let $F$ represent the terms in a fact and $U$ the terms in an evidence unit. IDF is calculated using the smoothed formula $\mathrm{idf}(t) = \log\frac{N+1}{\mathrm{df}(t)+1} + 1$. The baseline method uses TF-IDF cosine similarity, with log-scaled term frequency and L2-normalised vectors. However, cosine similarity can penalise longer evidence passages for containing words that are not in the fact. Since fact verification mainly focuses on how much of a fact is covered by the evidence, we also use IDF-weighted recall:
-
-\begin{equation}
-\mathrm{score}(f) = \max_{U}\ \frac{\sum_{t \in F \cap U} \mathrm{idf}(t)}{\sum_{t \in F} \mathrm{idf}(t)} .
-\end{equation}
-
-All methods are implemented from scratch, so \texttt{factcheck.py} does not require any additional libraries.
-
-\begin{table}[H]
-\centering
-\small
-\begin{tabular}{llcccccccc}
-\toprule
-Metric & Unit & N-gram & Stop & Stem & $\theta$ & Acc & P & R & F1 \\
-\midrule
-IDF-recall & passage  & 1   & \checkmark & \checkmark & 0.605 & \textbf{0.819} & 0.883 & 0.741 & 0.806 \\
-IDF-recall & sentence & 1   & \checkmark & \checkmark & 0.424 & 0.801 & 0.770 & 0.866 & 0.815 \\
-Cosine     & sentence & 1   & \checkmark & \checkmark & 0.270 & 0.760 & 0.736 & 0.821 & 0.776 \\
-Cosine     & sentence & 1   & \checkmark &            & 0.260 & 0.733 & 0.715 & 0.786 & 0.749 \\
-Cosine     & passage  & 1+2 & \checkmark & \checkmark & 0.040 & 0.724 & 0.658 & 0.946 & 0.777 \\
-Cosine     & sentence & 1+2 & \checkmark & \checkmark & 0.125 & 0.720 & 0.669 & 0.884 & 0.762 \\
-Cosine     & sentence & 1   &            &            & 0.288 & 0.701 & 0.730 & 0.652 & 0.689 \\
-Cosine     & sentence & 1+2 &            &            & 0.144 & 0.692 & 0.667 & 0.786 & 0.721 \\
-\bottomrule
-\end{tabular}
-\caption{Ablation results on the dev set.}
-\label{tab:ablation}
-\end{table}
-
-\newpage
-\noindent \textbf{Findings:} With the same preprocessing, IDF-weighted recall performs better than cosine similarity (80.1\% compared to 76.0\%). Removing stopwords and applying stemming also improve accuracy (70.1\% to 76.0\%). However, adding bigrams reduces accuracy (76.0\% to 72.0\%), likely because most facts are only 5--10 words long.
-
-\paragraph{Subject-name removal and global IDF:} Two additional changes, both made without using the labels, gave the biggest improvement (Table~\ref{tab:tuning}, Figure~\ref{fig:p1scorer}). First, the subject's name (taken from the page title) is removed because it appears in almost every passage (603 of 692) and can make unsupported facts seem more relevant. Second, IDF is calculated using all 1{,}562 unique passages instead of just the 2--5 passages available for each fact. These changes work better together. Using global IDF alone slightly reduces accuracy because rare names receive higher weights. However, removing subject names first gives the best overall result.
-
-\begin{table}[H]
-\centering
-\small
-\begin{tabular}{lccccc}
-\toprule
-Unit & Drop name & IDF & $\theta$ & Acc & 5-fold CV \\
-\midrule
-sentence & \checkmark & global & 0.455 & \textbf{0.878} & \textbf{0.869} \\
-passage  & \checkmark & global & 0.455 & 0.855 & 0.837 \\
-sentence & \checkmark & local  & 0.468 & 0.846 & 0.819 \\
-passage  & \checkmark & local  & 0.441 & 0.846 & 0.814 \\
-passage  &            & global & 0.718 & 0.828 & 0.801 \\
-passage  &            & local  & 0.605 & 0.819 & 0.797 \\
-sentence &            & local  & 0.424 & 0.801 & 0.756 \\
-sentence &            & global & 0.494 & 0.792 & 0.751 \\
-\bottomrule
-\end{tabular}
-\caption{Comparison of name removal, IDF source and evidence unit across different combinations.}
-\label{tab:tuning}
-\end{table}
-
-\begin{figure}[H]
-\centering
-\safefig{0.6\linewidth}{figures/part1_scorer.png}
-\caption{The final IDF-recall scorer applied to an example fact.}
-\label{fig:p1scorer}
-\end{figure}
-
-% ---------------------------------------------------------------------
-\subsection{Jaccard similarity (Tamadhi)}
-\label{sec:p1tamadhi}
-% Suggested content (about half a page):
-%  - Jaccard formula: |F intersect U| / |F union U|
-%  - Preprocessing and options tested (tokeniser, stopwords, stemming, sentence vs passage,
-%    max/mean/top-k aggregation, IDF-weighted Jaccard), threshold sweep
-%  - Results table and main finding
-% From Task_A/tamadhi_jaccard/jaccard_metric.md: best = NLTK tokeniser, stop+stem, whole passage,
-% max aggregation, threshold 0.03 -> 70.1% (155/221); 150 experiments; IDF-weighted Jaccard 68%.
-\placeholder{Tamadhi: method, preprocessing, tuning and results for Jaccard similarity.}
-
-% ---------------------------------------------------------------------
-\subsection{ROUGE-1 recall (Dion)}
-\label{sec:p1dion}
-The word-overlap checker returns supported or not supported. The class is \texttt{WordRecall\-Threshold\-FactChecker} in \texttt{factcheck.py}, run as \texttt{python factchecking\_main.py --mode word\_overlap}. The script \texttt{compare\_rouge.py} scores the other ROUGE forms on the same tokens and does not change the checker. Held-out counts come from a separate script that imports the checker and does not change it.
-
-One example is a fact, its retrieved passages, and a human label. The driver joins \texttt{dev\_labeled\_ChatGPT.jsonl} to \texttt{passages\_bm25\_ChatGPT\_humfacts.jsonl}: 221 facts from 31 biographies, the human atomic facts of FActScore (Min et al., 2023). The labels are 112 supported, 93 not supported, and 16 irrelevant. Irrelevant is mapped to not supported, so the negative class has 109 facts.
-
-Always predicting supported scores 112/221 (0.507). The cut may be tuned on this set. The figures are development estimates, not a hidden test. Held-out accuracy uses five folds: biography names are shuffled with seed 3604, and each fold keeps the highest cut that maximises accuracy on the other biographies.
-
-The score is maximum ROUGE-1 recall on windows of eight stemmed tokens. ROUGE-1 precision on those windows is 158/221 (0.715), because a window is mostly other words. ROUGE-2 recall is 139/221 (0.629), because a reworded date breaks the pair. ROUGE-L recall, the nearest alternative, is 179/221 (0.810) and 175/221 (0.792) held out. Recall asks whether the fact's own words appear, so the checker uses ROUGE-1 recall.
-
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}[
-  node distance=6.5mm,
-  box/.style={draw, rounded corners=2pt, align=center, font=\footnotesize, inner sep=3pt, text width=7.4cm, minimum height=7.2mm},
-  arr/.style={-{Stealth[length=2mm]}, thick}
-]
-\node[box, fill=blue!18] (in) {Fact and retrieved passages};
-\node[box, fill=green!25, below=of in] (clean) {NFKC, HTML unescape, strip tags};
-\node[box, fill=orange!30, below=of clean] (tok) {Casefold, drop stop words, Porter stem};
-\node[box, fill=yellow!40, below=of tok] (title) {Remove page-title tokens};
-\node[font=\footnotesize, text=red, anchor=west, align=left, text width=3.5cm] (note) at ($(title.east)+(2mm,0)$) {No tokens left: the score is 0};
-\node[box, fill=blue!18, below=of title] (win) {Windows of 8 tokens, stride 4};
-\node[box, fill=green!25, below=of win] (score) {Maximum ROUGE-1 recall};
-\node[box, fill=orange!30, below=of score] (dec) {Supported if the score is at least 3/7};
-\draw[arr] (in) -- (clean);
-\draw[arr] (clean) -- (tok);
-\draw[arr] (tok) -- (title);
-\draw[arr] (title) -- (win);
-\draw[arr] (win) -- (score);
-\draw[arr] (score) -- (dec);
-\end{tikzpicture}
-\caption{The word-overlap checker scores a fact by the maximum ROUGE-1 recall over 8-token windows and predicts supported when that score is at least 3/7.}
-\label{fig:dion-p1-flow}
-\end{figure}
-
-\paragraph{Text cleaning:} Before any token is formed, the fact and each passage are repaired as character strings. Markup or a compatibility character would otherwise become a token or split a name.
-
-\begin{table}[H]
-\centering
-\small
-\begin{tabularx}{\linewidth}{L{2.2cm} L{3.6cm} Y}
-\toprule
-Step & Choice & Reason \\
-\midrule
-Unicode & NFKC & Compatibility forms would split a name the page spells as one word. \\
-Entities & HTML unescape & A name left as an entity would not match the same name in the fact. \\
-Markup & Tags become spaces & Wikipedia tags, including sentence markers, are not words. \\
-\bottomrule
-\end{tabularx}
-\caption{Text cleaning choices.}
-\label{tab:dion-p1-clean}
-\end{table}
-
-\paragraph{Preprocessing:} A cleaned string is casefolded and split on Unicode word characters, with underscores excluded. A fixed stop list is removed, and the rest are Porter stemmed. Negations and numerals stay, so ``not'' and a year both survive. Stemming makes an inflection count once.
-
-\begin{table}[H]
-\centering
-\small
-\begin{tabularx}{\linewidth}{L{2.2cm} L{3.6cm} Y}
-\toprule
-Step & Choice & Reason \\
-\midrule
-Case & Casefold & Capitalisation should not decide a match. \\
-Split & Word characters & Punctuation is not part of the overlap. \\
-Stop words & Fixed list removed & Function words do not carry the claim. \\
-Stem & Porter & Inflections of one word should count as one token. \\
-\bottomrule
-\end{tabularx}
-\caption{Token preprocessing choices.}
-\label{tab:dion-p1-prep}
-\end{table}
-
-The alternative was the same recall with stemming turned off, and the cut retuned. That run scored 176/221 (0.796) on the full set and 171/221 (0.774) held out. Both columns fall, so the stemmer stays. Porter does map ``United'' to ``unit'', which is why a claim about the United Kingdom can lose its token, but that one fact does not outweigh the count.
-
-\paragraph{Title filtering:} Each passage title is tokenised in the same way and removed from that passage before the windows are cut. The fact loses the tokens of the first non-empty title. Otherwise an eight-token window spends its slots on the name, and the predicate is scored against the wrong span.
-
-If that removal leaves no tokens, the score is 0 and the prediction is not supported. ``Rennie Fritchie is a Baroness'' is this case. The title ``Rennie Fritchie, Baroness Fritchie'' contains every content word. The gold label is supported, and no cut repairs a zero.
-
-\paragraph{Segmentation:} The remaining tokens are cut into windows of eight, stride four. A passage of eight tokens or fewer is one window. A short remainder is kept as a shorter window, neither padded nor dropped. The fact score is the maximum over windows and passages. One supporting span is enough. A mean over the page would dilute that span.
-
-Scoring each passage as a single bag, with the same stemming and the same title removal, reaches 177/221 (0.801) on the full set and 166/221 (0.751) when the cut is refit. Both sit below the window, so the checker keeps the eight-token span. The stride of four lets a claim that crosses a boundary appear in some window.
-
-\paragraph{Scoring:} Let \(c_F(g)\) be the count of unigram \(g\) in the fact after cleaning and title removal, and let \(c_W(g)\) be the count of the same unigram in one window. The window score is the clipped overlap divided by the number of unigrams in the fact.
-
-\begin{equation}
-R(F,W)=\frac{\sum_{g}\min\bigl(c_F(g),c_W(g)\bigr)}{\sum_{g}c_F(g)}
-\end{equation}
-
-The fact score is the maximum of \(R(F,W)\). The checker predicts supported when that maximum is at least \(3/7\), stored as 0.42857142857142855. The driver records 183/221 (0.828): 94 of 112 supported facts recovered, 18 missed, 20 of 109 negative facts labelled supported. Precision is 94/114 (0.825), recall is 94/112 (0.839), and F1 is 0.832. Held out, the same score is 178/221 (0.805). The coursework target is 75\%. Both columns clear it.
-
-\paragraph{Preprocessing and evidence choices:} Each row turns one submitted choice off and retunes the cut. A blank cell means that switch is off. Dev.\ accuracy, precision, recall, and F1 use all 221 facts, for the supported class. Held-out accuracy uses the five folds. The bold cell is the highest held-out accuracy.
-
-\begin{table}[H]
-\centering
-\footnotesize
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{@{}ccccrrrrr@{}}
-\toprule
-Stop & Stem & Title & Window & Dev.\ accuracy & Held-out accuracy & P & R & F1 \\
-\midrule
-\checkmark & \checkmark & \checkmark & \checkmark & 0.828 & \textbf{0.805} & 0.825 & 0.839 & 0.832 \\
- & \checkmark & \checkmark & \checkmark & 0.719 & 0.593 & 0.719 & 0.732 & 0.726 \\
-\checkmark & & \checkmark & \checkmark & 0.796 & 0.774 & 0.813 & 0.777 & 0.795 \\
-\checkmark & \checkmark & & \checkmark & 0.769 & 0.719 & 0.723 & 0.884 & 0.795 \\
-\checkmark & \checkmark & \checkmark & & 0.801 & 0.751 & 0.886 & 0.696 & 0.780 \\
-\bottomrule
-\end{tabular}}
-\caption{Ablation of stop words, stemming, title removal and windows. A blank cell means that switch is off.}
-\label{tab:dion-p1-ablation}
-\end{table}
-
-Leaving the stop words in scores 159/221 (0.719) on the full set and 131/221 (0.593) held out. Function words then fill the window, so the stop list stays. The stem row is the alternative already rejected above, and it stays off. Leaving the title tokens in scores 170/221 (0.769), and precision on the supported class falls to 0.723, because the name matches windows that do not contain the predicate. Scoring the whole passage instead of the windows is the 177/221 (0.801) row, and recall falls to 78/112 (0.696) because the page dilutes the fact. The submitted row is the only one that leads the held-out column.
-
-\paragraph{Limitations:} The cut does not repair scores at the two ends. At \(3/7\) there are 20 false supports and 18 misses. Several false supports score 1, and several misses score 0. A higher cut would have to pass 1, and a lower cut cannot lift a zero.
-
-False supports are often one surviving word that happens to occur on the page. Misses include facts whose predicate was removed with the title, as with the Baroness fact. There is no separate irrelevant signal. Two of the 20 false supports were irrelevant before that class was mapped to not supported.
-
-``Marianne McAndrew is an American'' scores 1. After the title is removed, the only token is ``american'', and the page names the series ``Love, American Style''. The gold label is not supported. No cut that still accepts a complete overlap can reject it.
-
-% ---------------------------------------------------------------------
-\subsection{Shavindu's metric (Shavindu)}
-\label{sec:p1shavindu}
-% Rename the heading to the metric used.
-\placeholder{Shavindu: method, preprocessing, tuning and results.}
-
-% ---------------------------------------------------------------------
-\subsection{Comparison and final model}
-\label{sec:p1final}
-The below table compares each member's best configuration. IDF-weighted recall with name removal and global IDF is the most accurate, so it is the \texttt{WordRecallThresholdFactChecker} in \texttt{factcheck.py}.
-
-\begin{table}[H]
-\centering
-\begin{tabular}{llcc}
-\toprule
-Method & Member & Accuracy & CV \\
-\midrule
-Jaccard (whole passage, stop+stem) & Tamadhi & 0.701 & -- \\
-TF-IDF cosine (sentence, stop+stem) & Rumaiz & 0.760 & -- \\
-ROUGE-1 recall (8-token windows) & Dion & 0.828 & 0.805 \\
-% Shavindu's method & Shavindu & 0.000 & -- \\
-\textbf{IDF-recall + name removal + global IDF} & Rumaiz & \textbf{0.878} & \textbf{0.869} \\
-\bottomrule
-\end{tabular}
-\caption{Best configuration of each word-overlap method. CV is 5-fold cross-validation; Dion's ROUGE-1 recall uses folds grouped by biography.}
-\label{tab:methods}
-\end{table}
-
-\noindent The final threshold is set to $\theta = 0.457$, which falls within a stable range where accuracy remains at or above 85\% for values between $0.43$ and $0.53$. In comparison, cosine similarity has a much narrower peak (Figure~\ref{fig:p1}).
-
-\begin{figure}[H]
-\centering
-\safefig{0.49\linewidth}{figures/accuracy_vs_threshold.png}\hfill
-\safefig{0.49\linewidth}{figures/score_distribution.png}
-\caption{Left: accuracy against threshold. Right: score distribution of the final model by gold label.}
-\label{fig:p1}
-\end{figure}
-
-\begin{table}[H]
-\centering
-\begin{tabular}{lccc}
-\toprule
-Class & Precision & Recall & F1 \\
-\midrule
-S  & 0.890 & 0.866 & 0.878 \\
-NS & 0.866 & 0.890 & 0.878 \\
-\bottomrule
-\end{tabular}
-\caption{Final word-overlap model ($\theta=0.457$): accuracy 194/221 = \textbf{87.8\%} (TP 97, FN 15, FP 12, TN 97).}
-\label{tab:p1final}
-\end{table}
-
-\optfig{0.85\linewidth}{figures/terminal_word_overlap.png}{Output of \texttt{python factchecking\_main.py --mode word\_overlap}.}
-
-\paragraph{Limitations:} Bag-of-words matching does not consider word order or relationships between words. It can also miss paraphrases (e.g., \textit{actress} vs \textit{appeared in films}) and may incorrectly support a fact when the same words appear in the evidence but describe a different relationship.
-
 % =====================================================================
-% PART 2: TEXTUAL ENTAILMENT (40%)
-% =====================================================================
-\section{Part 2: Textual Entailment}
-\label{sec:part2}
-
-\subsection{Model and setup}
-All members use \texttt{MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli}, which produces logits for entailment, neutral and contradiction. These are converted into probabilities using softmax, giving $[P(E), P(N), P(C)]$. A test with three text pairs confirmed that the labels are in the expected order. The fact is used as the hypothesis, while the Wikipedia text serves as the premise.
-
-\subsection{Window premises, max $P(E)$ and pruning (Rumaiz)}
-\label{sec:p2rumaiz}
-\paragraph{Passage preprocessing:} Passages are split using \texttt{<s>} markers and sentence punctuation. Extra whitespace is removed, and fragments with fewer than three words (e.g.\ ``Career.'') are discarded. This leaves 5{,}417 premise--fact pairs. Model outputs are cached after the first run, allowing different decision rules, thresholds and pruning settings to be tested without running the model again.
-
-\begin{table}[H]
-\centering
-\begin{tabular}{llcc}
-\toprule
-Premise & Decision rule & $\theta$ & Accuracy \\
-\midrule
-sentence & discrete: any argmax $=$ entailment & -- & 0.810 \\
-sentence & threshold on max $P(E)$ & 0.322 & 0.819 \\
-sentence & threshold on max $[P(E)-P(C)]$ & 0.086 & 0.819 \\
-window & discrete: any argmax $=$ entailment & -- & 0.828 \\
-window & \textbf{threshold on max $P(E)$} & 0.314 & \textbf{0.842} \\
-window & threshold on max $[P(E)-P(C)]$ & 0.303 & 0.837 \\
-\bottomrule
-\end{tabular}
-\caption{Decision strategies (no pruning). A window premise is the previous sentence plus the current sentence.}
-\label{tab:strategies}
-\end{table}
-
-\noindent The \textbf{window} improves every rule, because pronoun sentences (``\emph{He} was born in \dots'') get their referent from the previous sentence. A \textbf{threshold on $P(E)$} beats the discrete rule, which requires $P(E)$ to exceed $P(N)$; subtracting $P(C)$ adds nothing, as contradiction is near zero for the best premise.
-
-\begin{table}[H]
-\centering
-\caption{Fact-level pruning with the Part~1 score (window premise, max $P(E)$). ``S lost'' counts supported facts wrongly pruned.}
-\label{tab:pruning}
-\begin{tabular}{cccccc}
-\toprule
-$\tau$ & Facts pruned & S lost & Calls skipped & $\theta$ & Accuracy \\
-\midrule
-0.00 & 0  & 0  & 0.0\%  & 0.314 & 0.842 \\
-0.05 & 43 & 4  & 17.0\% & 0.314 & 0.864 \\
-\textbf{0.10} & \textbf{44} & \textbf{4} & \textbf{17.2\%} & \textbf{0.314} & \textbf{0.864} \\
-0.15 & 49 & 4  & 19.0\% & 0.164 & 0.864 \\
-0.20 & 57 & 5  & 21.8\% & 0.030 & 0.860 \\
-0.30 & 83 & 11 & 33.1\% & 0.027 & 0.860 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-% \noindent Pruning \textbf{improves both speed and accuracy}: facts with almost no word overlap are nearly always unsupported, and removing them removes false positives. Above $\tau \approx 0.15$ more supported facts are lost, so $\tau = 0.1$ is used. Pruning individual \emph{sentences} instead hurts (84.2\% $\rightarrow$ 82.4\%), because pronoun sentences have low overlap but are the evidence the model needs.
-
-\noindent Pruning improves both speed and accuracy. Facts with very little word overlap are usually unsupported, so removing them also helps reduce false positives. However, when $\tau$ goes above approximately $0.15$, more supported facts are lost. Therefore, $\tau = 0.1$ is used. Pruning individual \emph{sentences} has the opposite effect, reducing accuracy from 84.2\% to 82.4\%. This is because sentences containing pronouns may have little word overlap but still provide useful evidence for the model.
-
-% ---------------------------------------------------------------------
-\subsection{Sentence, pair, and passage entailment (Dion)}
-\label{sec:p2dion}
-The entailment checker returns supported or not supported. Its class is \texttt{Entailment\-FactChecker}, run as \texttt{python factchecking\_main.py --mode entailment --cuda}. The driver loads \texttt{MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli}, with labels entailment, neutral, then contradiction. Other decision rules are reapplied to saved probabilities and do not change the checker. Held-out counts use the same five folds.
-
-An example is defined as in Part 1, on the same 221 facts, with the same mapping of irrelevant labels and the same always-supported baseline. The figures are again development estimates. The fact score is the maximum entailment probability over premises that pass an overlap gate, and the checker predicts supported at 0.25 or above.
-
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}[
-  node distance=3.4mm,
-  box/.style={draw, rounded corners=2pt, align=center, font=\footnotesize, inner sep=2.5pt, text width=7.6cm, minimum height=6.6mm},
-  dec/.style={draw, diamond, aspect=2.6, align=center, font=\footnotesize, inner sep=1pt, text width=3.5cm, fill=yellow!40},
-  side/.style={draw, rounded corners=2pt, align=center, font=\footnotesize, inner sep=2pt, text width=3.3cm, fill=pink!30, minimum height=6.6mm},
-  arr/.style={-{Stealth[length=2mm]}, thick}
-]
-\node[box, fill=blue!18] (in) {Retrieved passages};
-\node[box, fill=green!25, below=of in] (split) {Split on \texttt{<s>}, then clean each chunk};
-\node[box, fill=orange!30, below=of split] (noise) {Drop short lines and boilerplate};
-\node[dec, below=of noise] (titleq) {Title already in the text?};
-\node[side, right=3mm of titleq] (prefix) {Prefix the page title};
-\node[box, fill=purple!25, below=of titleq] (build) {Sentence, adjacent pair, and passage};
-\node[dec, below=of build] (gate) {ROUGE-1 recall at least 0.30?};
-\node[side, right=3mm of gate] (drop) {Drop the premise};
-\node[box, fill=yellow!40, below=of gate] (batch) {At most 48 premises, batches of 8, truncate at 512};
-\node[box, fill=blue!18, below=of batch] (nli) {DeBERTa-v3 entailment probability};
-\node[box, fill=green!25, below=of nli] (mx) {Maximum probability};
-\node[dec, below=of mx] (cut) {At least 0.25?};
-\node[side, fill=pink!30, below left=2mm and -8mm of cut] (yes) {Supported};
-\node[side, fill=pink!30, below right=2mm and -8mm of cut] (no) {Not supported};
-\draw[arr] (in) -- (split);
-\draw[arr] (split) -- (noise);
-\draw[arr] (noise) -- (titleq);
-\draw[arr] (titleq) -- node[left, font=\scriptsize] {yes} (build);
-\draw[arr] (titleq) -- node[above, font=\scriptsize] {no} (prefix);
-\draw[arr] (build) -- (gate);
-\draw[arr] (gate) -- node[left, font=\scriptsize] {yes} (batch);
-\draw[arr] (gate) -- node[above, font=\scriptsize] {no} (drop);
-\draw[arr] (batch) -- (nli);
-\draw[arr] (nli) -- (mx);
-\draw[arr] (mx) -- (cut);
-\draw[arr] (cut) -- node[left, font=\scriptsize] {yes} (yes);
-\draw[arr] (cut) -- node[right, font=\scriptsize] {no} (no);
-\end{tikzpicture}
-\caption{The entailment checker builds sentence, pair, and passage premises, drops those below a ROUGE-1 recall of 0.30, and predicts supported when the maximum entailment probability is at least 0.25. The overlap score drawn in the gate is the Part 1 score on each premise, with the title tokens removed.}
-\label{fig:dion-p2-flow}
-\end{figure}
-
-\paragraph{Passage cleaning:} The split runs on the raw passage, so the \texttt{<s>} markers are still present. Each chunk is then normalised and the markers are stripped. Case is left as written, because the model uses it. A casefolded copy is used only to detect a duplicate or a boilerplate line, and the model does not receive that copy.
-
-\begin{table}[H]
-\centering
-\small
-\begin{tabularx}{\linewidth}{L{2.2cm} L{3.6cm} Y}
-\toprule
-Step & Choice & Reason \\
-\midrule
-Markers & Kept until the split & The \texttt{<s>} tags are the sentence boundaries. \\
-Unicode & NFKC & The same character repair as in Part 1. \\
-Entities & HTML unescape & A name should not remain as an entity. \\
-Tags & Replaced by spaces & A marker is not part of the sentence. \\
-Case & Left as written & Casefold is reserved for the duplicate key and the overlap tokens. \\
-\bottomrule
-\end{tabularx}
-\caption{Passage cleaning before the split.}
-\label{tab:dion-p2-clean}
-\end{table}
-
-\paragraph{Sentence splitting and noise removal:} Passages are split on \texttt{<s>}\ldots\texttt{</s>}. With no tags, the whole passage is one chunk. Sentences shorter than eight characters are dropped (33), as are \texttt{references.}, \texttt{see also.}, \texttt{external links.}, and \texttt{notes.} (16). A repeated sentence is dropped, which removes 0 sentences here. That leaves 988 sentences, 296 adjacent pairs, and 692 passage premises, each truncated to 1500 characters.
-
-At the cut of 0.25 and the same gate, sentences alone score 171/221 (0.774) and the passage alone scores 180/221 (0.814). Using both scores 184/221 (0.833). The sentences add four facts the passage does not recover, so the checker keeps the split and the passage.
-
-\paragraph{Title:} When the title string is not already in the premise, the checker prefixes the title and a period, so a pronoun has a referent. Of 1976 premises built before the gate, 1006 receive that prefix. The same gate of 0.30, the same cap of 48, and the same probability cut of 0.25, run on those premises with the prefix removed, score 182/221 (0.824). Supported precision is 0.910, recall is 0.723, and F1 is 0.806. The false supports stay at 8, and the misses rise from 27 to 31, so the prefix stays.
-
-\paragraph{Premises:} For each passage the checker builds the kept sentences, then each adjacent pair, then the passage. Overlap is ROUGE-1 recall with the title tokens removed, on that premise as one bag. Premises below 0.30 are dropped, sorted by overlap, and capped at 48. A cap of 8 already scores 186/221, on 607 premises rather than 627, so the cap of 48 does not change the count.
-
-Removing one kind at a time, at the same cut, shows which kind carries the facts. Without sentences the count is 183/221 (0.828). Without pairs it is 184/221 (0.833). Without the passage it is 175/221 (0.792). The passage is kept because that drop is 11 facts. Dropping sentences costs three facts and dropping pairs costs two, so both stay. Pairs alone score 143/221 (0.647), so a pair is an extra span, not a replacement.
-
-\paragraph{Word-overlap pruning:} A premise below the overlap gate is not sent to the model. Every row uses the maximum-probability rule and the cut 0.25. The cut column is the overlap gate. The pair count is how many premises the model would score. Precision, recall, and F1 are for the supported class on the full set.
-
-\begin{table}[H]
-\centering
-\small
-\begin{tabular}{@{}lrrrrrr@{}}
-\toprule
-Setting & Cut & Accuracy & P & R & F1 & Pairs \\
-\midrule
-No skip & 0.000 & 0.810 & 0.802 & 0.830 & 0.816 & 1976 \\
-Overlap & 0.150 & 0.837 & 0.888 & 0.777 & 0.829 & 851 \\
-Overlap & 0.300 & \textbf{0.842} & 0.914 & 0.759 & 0.829 & 627 \\
-\bottomrule
-\end{tabular}
-\caption{Overlap gate with the maximum-probability rule at the cut 0.25.}
-\label{tab:dion-p2-gate}
-\end{table}
-
-No skip scores 179/221 (0.810) and sends all 1976 premises. A gate of 0.15 scores 185/221 (0.837). The gate of 0.30 scores 186/221 (0.842) on 627 premises, so it is kept: it is the most accurate row, and supported precision rises from 0.802 to 0.914. Recall falls from 0.830 to 0.759. That loss is the 10 supported facts, out of 76, that have no premise left. The other 66 are not supported and are rejected with no model call.
-
-\paragraph{Scoring:} A softmax turns the three logits into probabilities, and the label is the largest class. The value kept for the decision is the entailment probability, even when the largest class is neutral or contradiction. Let \(P(f)\) be the premises that survive the gate and the cap, and let \(\pi(p,f)\) be that probability.
-
-\begin{equation}
-s(f)=\max_{p\in P(f)}\pi(p,f)
-\end{equation}
-
-The checker predicts supported when \(s(f)\) is at least 0.25, and not supported when \(P(f)\) is empty or the maximum falls short. The driver records 186/221 (0.842): 85 of 112 supported facts recovered, 27 missed, and 8 of 109 negative facts labelled supported. Precision is 85/93 (0.914), recall is 85/112 (0.759), and F1 is 0.829. The probability that a supported fact outscores an unsupported one, ties counted half, is 0.887. The target for this part is 83\%, and 186/221 clears it. Held out, the refit cut scores 182/221 (0.824).
-
-\paragraph{Decision rules:} The three rules use the same premises, the same gate of 0.30, and the same cap of 48. A blank held-out cell is a rule with no cut to refit. The bold accuracy is the submitted rule. Precision, recall, and F1 are for the supported class on the full set.
-
-\begin{table}[H]
-\centering
-\footnotesize
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{@{}lcccccc@{}}
-\toprule
-Rule & Cut & Dev.\ accuracy & Held-out accuracy & P & R & F1 \\
-\midrule
-Maximum probability & 0.250 & \textbf{0.842} & 0.824 & 0.914 & 0.759 & 0.829 \\
-Any entailment label & & 0.824 & & 0.910 & 0.723 & 0.806 \\
-Highest-overlap label & & 0.778 & & 0.909 & 0.625 & 0.741 \\
-\bottomrule
-\end{tabular}}
-\caption{Decision rules on the same premises. A blank cut is a rule with nothing to refit.}
-\label{tab:dion-p2-rules}
-\end{table}
-
-The maximum-probability rule is kept. Any entailment label scores 182/221 (0.824), and the label of the highest-overlap premise scores 172/221 (0.778). The discrete rule has the same 8 false supports and 31 misses, four more than the probability rule. Those four facts reach 0.25 on the entailment probability while no premise has entailment as its largest class. The highest-overlap label is weaker because the premise with the most shared words is often neutral. The other two rules have no cut, so their held-out cells are blank.
-
-\paragraph{Premise choices:} A blank cell means that kind of premise is off. Every row uses the maximum-probability rule, the probability cut of 0.25, and the overlap gate of 0.30. The bold accuracy is the submitted list. The pair count is the number of premises scored.
-
-\begin{table}[H]
-\centering
-\footnotesize
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{@{}ccccrrrrr@{}}
-\toprule
-Sentence & Pair & Passage & Cap & Accuracy & P & R & F1 & Pairs \\
-\midrule
-\checkmark & \checkmark & \checkmark & 48 & \textbf{0.842} & 0.914 & 0.759 & 0.829 & 627 \\
- & \checkmark & \checkmark & 48 & 0.828 & 0.911 & 0.732 & 0.812 & 382 \\
-\checkmark & & \checkmark & 48 & 0.833 & 0.912 & 0.741 & 0.818 & 525 \\
-\checkmark & \checkmark & & 48 & 0.792 & 0.923 & 0.643 & 0.758 & 347 \\
-\checkmark & \checkmark & \checkmark & 4 & 0.837 & 0.913 & 0.750 & 0.824 & 472 \\
-\bottomrule
-\end{tabular}}
-\caption{Premise types at the probability cut 0.25 and the overlap gate 0.30. A blank cell means that kind of premise is off.}
-\label{tab:dion-p2-premises}
-\end{table}
-
-The submitted list is the only row at the full count. Dropping the passage costs the most. A cap of 4 scores 185/221 (0.837), one fact behind, while a cap of 8 already matches the submitted count, so 48 is a bound rather than the source of the accuracy.
-
-\paragraph{Efficiency:} Premises that survive the gate are scored in batches of eight, padded and truncated at 512 tokens. The model is in evaluation mode, with no gradient. Batch tensors are deleted, garbage collection runs, and the CUDA cache is emptied when the driver is started with \texttt{--cuda}, as in the entailment log. The comparison pass scored all 1976 premises once and reused the probabilities, which is more than the 627 pairs the checker sends.
-
-\paragraph{Limitations:} The cut at 0.25 does not repair errors far from it. The eight false supports run from 0.6762 to 0.9988, and ten misses never reach the model because the gate removed every premise. False supports are relations and added details that one premise still entailed. Misses are title words, renamed places, and conflicting numbers. There is no separate irrelevant label. ``Cleveland is in Ohio'' was irrelevant and is predicted supported at 0.9962, from pages that mention East Cleveland, Ohio, Strongsville, Ohio, and the Cleveland Indians.
-
-% ---------------------------------------------------------------------
-\subsection{Shavindu's approach (Shavindu)}
-\label{sec:p2shavindu}
-% Rename the heading to the approach used.
-\placeholder{Shavindu: premise construction, decision rule, pruning and results.}
-
-% ---------------------------------------------------------------------
-\subsection{Comparison and final model}
-\label{sec:p2final}
-
-\begin{table}[H]
-\centering
-\begin{tabular}{llc}
-\toprule
-Approach & Member & Accuracy \\
-\midrule
-Sentence, pair and passage, max $P(E)$ & Dion & 0.842 \\
-% Shavindu's approach & Shavindu & 0.000 \\
-\textbf{Window premises, max $P(E)$, pruning $\tau=0.1$} & Rumaiz & \textbf{0.864} \\
-\bottomrule
-\end{tabular}
-\caption{Best entailment configuration of each member (dev accuracy, $n=221$).}
-\label{tab:p2methods}
-\end{table}
-
-% \noindent The final \texttt{EntailmentFactChecker} uses window premises, max $P(E)$, pruning at $\tau=0.1$ and $\theta=0.325$, the centre of the optimal plateau $[0.314, 0.336]$; accuracy is at least 83\% for any $\theta \in [0.02, 0.78]$, and 5-fold CV accuracy is $85.5\% \pm 2.3$. Figure~\ref{fig:p2flow} shows how it predicts.
-\noindent The final \texttt{EntailmentFactChecker} uses window premises, max $P(E)$, pruning with $\tau=0.1$ and a threshold of $\theta=0.325$. This threshold is chosen from the middle of the best-performing range, $[0.314, 0.336]$. Accuracy remains at or above 83\% across a much wider range of $\theta$ values, from $0.02$ to $0.78$. The 5-fold cross-validation accuracy is $85.5\% \pm 2.3$. Figure~\ref{fig:p2flow} shows the steps followed when making a prediction.
-
-\begin{figure}[!htb]
-\centering
-\safefig{0.55\linewidth}{figures/part2_checker.png}
-\caption{Prediction flow of the final \texttt{EntailmentFactChecker}.}
-\label{fig:p2flow}
-\end{figure}
-
-\begin{table}[H]
-\centering
-\begin{tabular}{lccc}
-\toprule
-Class & Precision & Recall & F1 \\
-\midrule
-S  & 0.887 & 0.839 & 0.862 \\
-NS & 0.843 & 0.890 & 0.866 \\
-\bottomrule
-\end{tabular}
-\caption{Final entailment model: accuracy 191/221 = \textbf{86.4\%} (TP 94, FN 18, FP 12, TN 97).}
-\label{tab:p2final}
-\end{table}
-
-% \paragraph{Efficiency and memory.} Inference runs under \texttt{torch.no\_grad()} in batches of 16 (inputs truncated to 512 tokens), tensors are freed after each batch, and a fact is predicted S as soon as a batch reaches $\theta$ (early exit). Table~\ref{tab:runtime} compares full runs with and without pruning (MacBook Air, CPU only). Pruning makes prediction 21\% faster and removes 7 false positives while adding 2 false negatives; peak memory stays below 1.7\,GB.
-\paragraph{Efficiency and memory:} The model runs inference using \texttt{torch.no\_grad()} with batches of 16, and inputs are limited to 512 tokens. Tensors are cleared after each batch, and a fact is classified as S as soon as its score reaches $\theta$ (early exit). The table below compares the full model runs with and without pruning on a CPU-only MacBook Air. Pruning reduces prediction time by 21\%, removes 7 false positives and adds 2 false negatives. Peak memory usage remains below 1.7\,GB. With pruning and early exit together, only 3{,}394 of the 5{,}417 premise--fact pairs are sent to the model (37\% skipped), compared with 4{,}186 with early exit alone.
-
-\begin{table}[H]
-\centering
-\begin{tabular}{lcccc}
-\toprule
-Setting & Accuracy & Prediction loop & Total & Peak memory \\
-\midrule
-No pruning ($\tau=0$) & 84.2\% & 232\,s & 263\,s & 1{,}604\,MB \\
-Pruning ($\tau=0.1$) & \textbf{86.4\%} & \textbf{183\,s} & \textbf{216\,s} & 1{,}313\,MB \\
-\bottomrule
-\end{tabular}
-\caption{Measured effect of pruning (prediction loop excludes model loading).}
-\label{tab:runtime}
-\end{table}
-
-\begin{figure}[H]
-\centering
-\begin{subfigure}{0.82\linewidth}
-\centering
-\safefig{\linewidth}{figures/terminal_entailment.png}
-\caption{Final model, pruning $\tau = 0.1$: 191/221.}
-\end{subfigure}
-
-\vspace{4pt}
-\begin{subfigure}{0.82\linewidth}
-\centering
-\safefig{\linewidth}{figures/terminal_entailment_noprune.png}
-\caption{Without pruning ($\tau = 0$): 186/221.}
-\end{subfigure}
-\caption{Output of \texttt{/usr/bin/time -l python factchecking\_main.py --mode entailment}}
-\label{fig:term2}
-\end{figure}
-
-% \paragraph{Comparison with Part 1:} The tuned lexical model (87.8\%) slightly outperforms entailment (86.4\%) on this dev set. The NLI model handles paraphrase and pronouns but over-trusts topical similarity (Section~\ref{sec:part3}).
-\paragraph{Comparison with Part 1:} The tuned lexical model achieves slightly higher accuracy (87.8\%) than the entailment model (86.4\%) on the dev set. However, the NLI model is better at handling paraphrases and pronouns, although it can sometimes treat topical similarity as evidence of support (Section~\ref{sec:part3}).
-
-% =====================================================================
-% APPENDIX C: ERROR ANALYSIS OF DION'S CHECKER
+% APPENDIX A: ERROR ANALYSIS OF DION'S CHECKER
 % =====================================================================
 \section{Errors of the sentence, pair, and passage checker (Dion)}
 \label{sec:p3dion}
-The errors examined here are those of the entailment checker in Section~\ref{sec:p2dion}. Each fact was read against the premises that remain after the overlap gate, which are the strings the model would see. The original irrelevant label is counted as not supported.
+This appendix is supplementary. It covers Dion's entailment checker (Section~\ref{sec:p2dion}), not the submitted model, whose errors are analysed in Part~3 (Section~\ref{sec:part3}). The errors examined here are those of that checker. Each fact was read against the premises that remain after the overlap gate, which are the strings the model would see. The original irrelevant label is counted as not supported.
 
 \paragraph{Categories:} The examined errors fall under three wording patterns, and the same three names are used for both directions.
 

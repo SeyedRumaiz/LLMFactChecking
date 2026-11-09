@@ -1,0 +1,206 @@
+﻿\section{Part 2: Sentence, pair, and passage entailment}
+
+The Part 1 ROUGE-1 recall is reused as a gate. A premise that clears it is then scored by the shared model's entailment probability, so support requires a span that both overlaps the fact and is entailed by it. The tables show which premises and which decision rule produce that gain over overlap alone.
+
+\subsection{Premises}
+
+The passage is split before it is cleaned, so the sentence markers are still present. Character repair is the Part 1 step (NFKC, HTML unescape, tags to spaces) and is not repeated here. Case stays as written, because the model uses it. A casefolded copy is used only to spot a duplicate or a boilerplate line.
+
+\begin{center}
+\small
+\begin{tabular}{@{}llp{7.6cm}@{}}
+\toprule
+Step & Choice & Reason \\
+\midrule
+Split & On \texttt{<s>}\ldots\texttt{</s>}, before cleaning & The markers are the sentence boundaries. No tags means one chunk. \\
+Repair & Same as Part 1 & NFKC, HTML unescape, and tags to spaces. \\
+Case & Left as written & Casefold is only the duplicate and boilerplate check. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{itemize}\setlength{\itemsep}{0.4em}
+\item \textbf{Short and boilerplate sentences.}
+A sentence under eight characters is dropped, as is a repeat, and the lines \texttt{references.}, \texttt{see also.}, \texttt{external links.}, and \texttt{notes.}
+Those lines are section headings. This removes 33 short sentences and 16 boilerplate lines, with 0 repeats.
+\item \textbf{Sentences, pairs, and the passage.}
+Each passage then gives its kept sentences, each adjacent pair, and the passage cut at 1500 characters.
+Sentences with the passage score 184/221 (0.833). Dropping the passage falls to 175/221 (0.792). Pairs alone score 143/221 (0.647).
+\item \textbf{Title prefix.}
+When the title is missing from the premise, it is added as \texttt{Title.} so a pronoun has a referent.
+That prefixes 1006 premises. Without it the score is 182/221 (0.824), with precision 0.910, recall 0.723, 31 misses, and 8 false supports.
+\item \textbf{Overlap and the cap.}
+Each premise is ranked by the Part 1 ROUGE-1 recall, with the title tokens removed, on that premise as one bag. Premises below 0.30 are dropped and the rest are capped.
+There are 1976 premises before the gate. A cap of 8 already scores 186/221 on 607 premises, so 48 is only a bound.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{Part 2 premise counts}
+\label{tab:premcounts}
+\small
+\begin{tabular}{@{}lr@{}}
+\toprule
+ & Value \\
+\midrule
+Short sentences dropped & 33 \\
+Boilerplate lines dropped & 16 \\
+Repeated sentences dropped & 0 \\
+Sentences & 988 \\
+Adjacent pairs & 296 \\
+Passage premises & 692 \\
+Premises before the gate & 1976 \\
+Title prefixes & 1006 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Word-overlap pruning}
+
+A premise below the overlap gate is not sent to the model. Every row uses the maximum-probability rule and the cut 0.25. Precision, recall, and F1 in Table~\ref{tab:prune} are for the supported class on the full set.
+
+No skip scores 179/221 (0.810) and sends all 1976 premises. A gate of 0.15 scores 185/221 (0.837). The gate of 0.30 scores 186/221 (0.842) on 627 premises, so it is kept: it is the most accurate row, and supported precision rises from 0.802 to 0.914. Recall falls from 0.830 to 0.759. That loss is the 10 supported facts, out of 76, that have no premise left. The other 66 are not supported and are rejected with no model call.
+
+\begin{table}[H]
+\centering
+\caption{Overlap gate}
+\label{tab:prune}
+\small
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+Setting & Cut & Accuracy & P & R & F1 & Pairs \\
+\midrule
+No skip & 0.000 & 0.810 & 0.802 & 0.830 & 0.816 & 1976 \\
+Overlap & 0.150 & 0.837 & 0.888 & 0.777 & 0.829 & 851 \\
+Overlap & 0.300 & \textbf{0.842} & 0.914 & 0.759 & 0.829 & 627 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Scoring}
+
+Let \(P(f)\) be the premises that survive the gate and the cap, and let \(\pi(p,f)\) be the entailment probability from the shared softmax, kept even when another class is larger.
+
+\begin{equation}
+s(f)=\max_{p\in P(f)}\pi(p,f)
+\end{equation}
+
+The checker predicts supported when \(s(f)\) is at least 0.25, and not supported when \(P(f)\) is empty or the maximum falls short. On all 221 facts that cut scores
+
+\[
+\frac{186}{221}=0.842
+\]
+
+85 of 112 supported facts are recovered, 27 are missed, and 8 of 109 negative facts are labelled supported. Precision is \(85/93=0.914\), recall is \(85/112=0.759\), and F1 is 0.829. Held out, the refit cut scores \(182/221=0.824\). The target is 0.83.
+
+\begin{table}[H]
+\centering
+\caption{Part 2 score}
+\label{tab:p2score}
+\small
+\begin{tabular}{@{}lr@{}}
+\toprule
+ & Value \\
+\midrule
+Accuracy & 186/221 (0.842) \\
+True supports & 85/112 \\
+Misses & 27 \\
+False supports & 8/109 \\
+Precision & 85/93 (0.914) \\
+Recall & 85/112 (0.759) \\
+F1 & 0.829 \\
+Pairwise probability & 0.887 \\
+Held-out accuracy & 182/221 (0.824) \\
+Target & 0.83 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Decision rules}
+
+The three rules use the same premises, the same gate of 0.30, and the same cap of 48 (Table~\ref{tab:rules}). The maximum-probability rule is kept. Any entailment label scores 182/221 (0.824), and the label of the highest-overlap premise scores 172/221 (0.778). The discrete rule has the same 8 false supports and 31 misses, four more than the probability rule. Those four facts reach 0.25 on the entailment probability while no premise has entailment as its largest class. The highest-overlap label is weaker because the premise with the most shared words is often neutral. The other two rules have no cut, so their held-out cells are blank.
+
+\begin{table}[H]
+\centering
+\caption{Decision rules}
+\label{tab:rules}
+{\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Rule & Cut & Accuracy & Held-out accuracy & P & R & F1 \\
+\midrule
+Maximum probability & 0.250 & \textbf{0.842} & 0.824 & 0.914 & 0.759 & 0.829 \\
+Any entailment label & & 0.824 & & 0.910 & 0.723 & 0.806 \\
+Highest-overlap label & & 0.778 & & 0.909 & 0.625 & 0.741 \\
+\bottomrule
+\end{tabular}}
+}
+\end{table}
+
+\subsection{Premise choices}
+
+A blank cell means that kind of premise is off. Every row in Table~\ref{tab:kinds} uses the maximum-probability rule, the probability cut of 0.25, and the overlap gate of 0.30. The submitted list is the only row at the full count. Dropping the passage costs the most. A cap of 4 scores 185/221 (0.837), one fact behind, while a cap of 8 already matches the submitted count, so 48 is a bound rather than the source of the accuracy.
+
+\begin{table}[H]
+\centering
+\caption{Premise kinds}
+\label{tab:kinds}
+{\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}ccccrrrrr@{}}
+\toprule
+Sentence & Pair & Passage & Cap & Accuracy & P & R & F1 & Pairs \\
+\midrule
+\ck & \ck & \ck & 48 & \textbf{0.842} & 0.914 & 0.759 & 0.829 & 627 \\
+ & \ck & \ck & 48 & 0.828 & 0.911 & 0.732 & 0.812 & 382 \\
+\ck & & \ck & 48 & 0.833 & 0.912 & 0.741 & 0.818 & 525 \\
+\ck & \ck & & 48 & 0.792 & 0.923 & 0.643 & 0.758 & 347 \\
+\ck & \ck & \ck & 4 & 0.837 & 0.913 & 0.750 & 0.824 & 472 \\
+\bottomrule
+\end{tabular}}
+}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=3.4mm,
+  box/.style={draw, rounded corners=2pt, align=center, font=\footnotesize, inner sep=2.5pt, text width=7.6cm, minimum height=6.6mm},
+  dec/.style={draw, diamond, aspect=2.6, align=center, font=\footnotesize, inner sep=1pt, text width=3.5cm, fill=yellow!40},
+  side/.style={draw, rounded corners=2pt, align=center, font=\footnotesize, inner sep=2pt, text width=3.3cm, fill=pink!30, minimum height=6.6mm},
+  arr/.style={-{Stealth[length=2mm]}, thick}
+]
+\node[box, fill=blue!18] (in) {Retrieved passages};
+\node[box, fill=green!25, below=of in] (split) {Split on \texttt{<s>}, then clean each chunk};
+\node[box, fill=orange!30, below=of split] (noise) {Drop short lines and boilerplate};
+\node[dec, below=of noise] (titleq) {Title already in the text?};
+\node[side, right=3mm of titleq] (prefix) {Prefix the page title};
+\node[box, fill=purple!25, below=of titleq] (build) {Sentence, adjacent pair, and passage};
+\node[dec, below=of build] (gate) {ROUGE-1 recall at least 0.30?};
+\node[side, right=3mm of gate] (drop) {Drop the premise};
+\node[box, fill=yellow!40, below=of gate] (batch) {At most 48 premises, batches of 8, truncate at 512};
+\node[box, fill=blue!18, below=of batch] (nli) {DeBERTa-v3 entailment probability};
+\node[box, fill=green!25, below=of nli] (mx) {Maximum probability};
+\node[dec, below=of mx] (cut) {At least 0.25?};
+\node[side, fill=pink!30, below left=2mm and -8mm of cut] (yes) {Supported};
+\node[side, fill=pink!30, below right=2mm and -8mm of cut] (no) {Not supported};
+\draw[arr] (in) -- (split);
+\draw[arr] (split) -- (noise);
+\draw[arr] (noise) -- (titleq);
+\draw[arr] (titleq) -- node[left, font=\scriptsize] {yes} (build);
+\draw[arr] (titleq) -- node[above, font=\scriptsize] {no} (prefix);
+\draw[arr] (prefix.south) |- (build.north);
+\draw[arr] (build) -- (gate);
+\draw[arr] (gate) -- node[left, font=\scriptsize] {yes} (batch);
+\draw[arr] (gate) -- node[above, font=\scriptsize] {no} (drop);
+\draw[arr] (drop.east) -- ++(4mm,0) |- (build.east);
+\draw[arr] (batch) -- (nli);
+\draw[arr] (nli) -- (mx);
+\draw[arr] (mx) -- (cut);
+\draw[arr] (cut) -- node[left, font=\scriptsize] {yes} (yes);
+\draw[arr] (cut) -- node[right, font=\scriptsize] {no} (no);
+\end{tikzpicture}
+\caption{The entailment checker builds sentence, pair, and passage premises, drops those below a ROUGE-1 recall of 0.30, and predicts supported when the maximum entailment probability is at least 0.25. The overlap score drawn in the gate is the Part 1 score on each premise, with the title tokens removed.}
+\end{figure}
+
