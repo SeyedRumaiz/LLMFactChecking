@@ -1,0 +1,40 @@
+{
+  "config": {
+    "tokenizer": "nltk",
+    "remove_stop": true,
+    "stem_on": true,
+    "drop_title": true,
+    "unit": "window",
+    "weighted": false,
+    "aggregation": "top2",
+    "win": 12,
+    "stride": 6
+  },
+  "theta": 0.081,
+  "accuracy": 0.8190045248868778,
+  "cv": 0.8187878787878787,
+  "cv_sd": 0.03300944573611207,
+  "grouped_cv": 0.8200140026446645,
+  "plateau": [
+    0.081,
+    0.083
+  ],
+  "metrics": {
+    "accuracy": 0.8190045248868778,
+    "TP": 99,
+    "FN": 13,
+    "FP": 27,
+    "TN": 82,
+    "precision_S": 0.7857142857142857,
+    "recall_S": 0.8839285714285714,
+    "f1_S": 0.8319327731092436,
+    "precision_NS": 0.8631578947368421,
+    "recall_NS": 0.7522935779816514,
+    "f1_NS": 0.8039215686274511
+  },
+  "baseline": {
+    "theta": 0.027,
+    "acc": 0.7194570135746606,
+    "cv": 0.6962626262626262
+  }
+}

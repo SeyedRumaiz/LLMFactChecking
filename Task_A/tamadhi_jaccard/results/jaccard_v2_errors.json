@@ -1,0 +1,242 @@
+[
+  {
+    "type": "FP",
+    "fact": "Marianne McAndrew is an American.",
+    "gold": "NS",
+    "score": 0.0871
+  },
+  {
+    "type": "FP",
+    "fact": "Cleveland is in Ohio.",
+    "gold": "IR",
+    "score": 0.1742
+  },
+  {
+    "type": "FP",
+    "fact": "Gerhard Fischer invented the first handheld, battery-operated metal detector in 1931.",
+    "gold": "NS",
+    "score": 0.2792
+  },
+  {
+    "type": "FP",
+    "fact": "The Fischer Research Laboratory was founded in 1936.",
+    "gold": "NS",
+    "score": 0.275
+  },
+  {
+    "type": "FP",
+    "fact": "The Fischer Research Laboratory became one of the world's leading manufacturers of metal detectors.",
+    "gold": "NS",
+    "score": 0.2132
+  },
+  {
+    "type": "FP",
+    "fact": "Tusa has worked to promote Palermo as a cultural destination.",
+    "gold": "IR",
+    "score": 0.125
+  },
+  {
+    "type": "FN",
+    "fact": "Jean Daull\u00e9 was born in 1703.",
+    "gold": "S",
+    "score": 0.0385
+  },
+  {
+    "type": "FN",
+    "fact": "Jean Daull\u00e9 died in 1763.",
+    "gold": "S",
+    "score": 0.0385
+  },
+  {
+    "type": "FP",
+    "fact": "He has become a regular starter in the team's defense.",
+    "gold": "NS",
+    "score": 0.0958
+  },
+  {
+    "type": "FP",
+    "fact": "Itakura has represented Japan at the Under-19-level.",
+    "gold": "NS",
+    "score": 0.0833
+  },
+  {
+    "type": "FP",
+    "fact": "Trivisonno started his radio career at WIXY 1260 AM.",
+    "gold": "NS",
+    "score": 0.1821
+  },
+  {
+    "type": "FP",
+    "fact": "Estes learned to play guitar from his grandfather.",
+    "gold": "NS",
+    "score": 0.1429
+  },
+  {
+    "type": "FN",
+    "fact": "Rennie Fritchie is a public servant.",
+    "gold": "S",
+    "score": 0.0769
+  },
+  {
+    "type": "FP",
+    "fact": "Salazar played for the Peru national team from 1995.",
+    "gold": "NS",
+    "score": 0.1429
+  },
+  {
+    "type": "FP",
+    "fact": "Salazar left the Peru national team in 2003.",
+    "gold": "IR",
+    "score": 0.1381
+  },
+  {
+    "type": "FP",
+    "fact": "Salazar earned 28 caps for the Peru national team.",
+    "gold": "IR",
+    "score": 0.1667
+  },
+  {
+    "type": "FP",
+    "fact": "Salazar scored six goals for the Peru national team.",
+    "gold": "NS",
+    "score": 0.1292
+  },
+  {
+    "type": "FN",
+    "fact": "He served for many years as a pastor.",
+    "gold": "S",
+    "score": 0.0714
+  },
+  {
+    "type": "FN",
+    "fact": "Hibo Wardere is based in the United Kingdom.",
+    "gold": "S",
+    "score": 0.0
+  },
+  {
+    "type": "FP",
+    "fact": "She has worked with a number of organizations.",
+    "gold": "NS",
+    "score": 0.1429
+  },
+  {
+    "type": "FP",
+    "fact": "She has worked with the World Health Organization.",
+    "gold": "NS",
+    "score": 0.1333
+  },
+  {
+    "type": "FP",
+    "fact": "Mayo Clinic is an organization.",
+    "gold": "NS",
+    "score": 0.1603
+  },
+  {
+    "type": "FP",
+    "fact": "He has worked at Mayo Clinic.",
+    "gold": "NS",
+    "score": 0.2404
+  },
+  {
+    "type": "FP",
+    "fact": "Furlong joined in 1995.",
+    "gold": "NS",
+    "score": 0.0871
+  },
+  {
+    "type": "FP",
+    "fact": "He served as a sniper.",
+    "gold": "NS",
+    "score": 0.1
+  },
+  {
+    "type": "FP",
+    "fact": "With CSKA, he won three Russian Premier League titles.",
+    "gold": "NS",
+    "score": 0.2582
+  },
+  {
+    "type": "FN",
+    "fact": "Florencia Bertotti is an Argentinian.",
+    "gold": "S",
+    "score": 0.0
+  },
+  {
+    "type": "FP",
+    "fact": "Florencia Bertotti is a television host.",
+    "gold": "NS",
+    "score": 0.1111
+  },
+  {
+    "type": "FN",
+    "fact": "Jonathan Haagensen is a Brazilian.",
+    "gold": "S",
+    "score": 0.0417
+  },
+  {
+    "type": "FN",
+    "fact": "Jonathan Haagensenis an actor.",
+    "gold": "S",
+    "score": 0.0769
+  },
+  {
+    "type": "FN",
+    "fact": "Jonathan Haagensen was born in Rio de Janeiro.",
+    "gold": "S",
+    "score": 0.0774
+  },
+  {
+    "type": "FN",
+    "fact": "Rio de Janeiro is in Brazil.",
+    "gold": "S",
+    "score": 0.0774
+  },
+  {
+    "type": "FP",
+    "fact": "Haagensen began his acting career when he was 15 years old.",
+    "gold": "NS",
+    "score": 0.1526
+  },
+  {
+    "type": "FN",
+    "fact": "Haagensen later transitioned to television.",
+    "gold": "S",
+    "score": 0.0
+  },
+  {
+    "type": "FN",
+    "fact": "Haagensen later transitioned to film.",
+    "gold": "S",
+    "score": 0.0742
+  },
+  {
+    "type": "FP",
+    "fact": "Kerser is from Sydney.",
+    "gold": "NS",
+    "score": 0.0909
+  },
+  {
+    "type": "FP",
+    "fact": "Kerser's real name is Scott Barrow.",
+    "gold": "NS",
+    "score": 0.1071
+  },
+  {
+    "type": "FP",
+    "fact": "Owen is known for his powerful surfing style.",
+    "gold": "NS",
+    "score": 0.1429
+  },
+  {
+    "type": "FP",
+    "fact": "Owen is known for his dynamic surfing style.",
+    "gold": "NS",
+    "score": 0.1429
+  },
+  {
+    "type": "FN",
+    "fact": "They divorced in 1964.",
+    "gold": "S",
+    "score": 0.0
+  }
+]
