@@ -243,14 +243,134 @@ sentence &            & global & 0.494 & 0.792 & 0.751 \\
 % ---------------------------------------------------------------------
 \subsection{Jaccard similarity (Tamadhi)}
 \label{sec:p1tamadhi}
-% Suggested content (about half a page):
-%  - Jaccard formula: |F intersect U| / |F union U|
-%  - Preprocessing and options tested (tokeniser, stopwords, stemming, sentence vs passage,
-%    max/mean/top-k aggregation, IDF-weighted Jaccard), threshold sweep
-%  - Results table and main finding
-% From Task_A/tamadhi_jaccard/jaccard_metric.md: best = NLTK tokeniser, stop+stem, whole passage,
-% max aggregation, threshold 0.03 -> 70.1% (155/221); 150 experiments; IDF-weighted Jaccard 68%.
-\placeholder{Tamadhi: method, preprocessing, tuning and results for Jaccard similarity.}
+Jaccard similarity compares the set of fact tokens $F$ with the set of tokens in an evidence unit $W$:
+\begin{equation}
+J(F, W) = \frac{|F \cap W|}{|F \cup W|}.
+\end{equation}
+Unlike recall, Jaccard also divides by the words of the evidence that are \emph{not} in the fact, so the size of the evidence unit matters. A first notebook (150 experiments) scored whole passages and reached only 155/221 (70.1\%) at $\theta = 0.03$, below the 75\% target. A second notebook keeps the same data and evaluation but adds two changes, name removal and short windows, and fixes how the threshold, IDF and cross-validation were done.
+
+\paragraph{Preprocessing:} Text is lowercased, \texttt{<s>} tags are removed and the NLTK word tokeniser is used, keeping only letters and digits. The other choices are in Table~\ref{tab:tam-p1-prep}; each is tested in Table~\ref{tab:tam-p1-ablation}.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{L{2.6cm} L{4.4cm} Y}
+\toprule
+Step & Choice & Reason \\
+\midrule
+Stop words & Fixed list of 47 function words, negations kept & Function words fill the union and hide the content words; \textit{not} must still count. \\
+Stemming & Porter & \textit{founded} and \textit{founding} should match. \\
+Subject name & Page-title tokens removed from the fact and the evidence & The name is in nearly every passage, so it makes any fact about the person look supported. A role in brackets, as in ``Kerser (rapper)'', is not treated as part of the name. If only the name is left, it is kept. \\
+Evidence unit & Windows of 12 tokens, stride 6, over each passage & Keeps the union close to the size of the fact. \\
+Aggregation & Mean of the two best windows (top-2) & One accidental match counts less than a span found by two overlapping windows. \\
+\bottomrule
+\end{tabularx}
+\caption{Tamadhi: preprocessing and scoring for the Jaccard checker.}
+\label{tab:tam-p1-prep}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\safefig{0.55\linewidth}{figures/tamadhi_p1_flow.png}
+\caption{Tamadhi: how the final Jaccard checker labels a fact.}
+\label{fig:tam-p1-flow}
+\end{figure}
+
+\paragraph{Changes from the first version:} The threshold is now swept in steps of $0.001$, as in Section~\ref{sec:intro}. The old $0.01$ grid had only three useful values below $0.03$. IDF weights are counted over the 1{,}562 unique passages instead of every repeated copy. 5-fold cross-validation (seed 42) and a split that holds out whole biographies were added. Table~\ref{tab:tam-p1-steps} shows that the finer grid alone adds only four facts. Almost all of the gain comes from name removal and windows.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule
+Version & $\theta$ & Correct & Accuracy & CV & F1 (S) \\
+\midrule
+First notebook: whole passage, name kept, $0.01$ grid & 0.030 & 155/221 & 0.701 & -- & 0.732 \\
+Same setting, $0.001$ grid & 0.027 & 159/221 & 0.719 & 0.696 & 0.767 \\
+\textbf{Name removed, 12-token windows, top-2} & \textbf{0.081} & \textbf{181/221} & \textbf{0.819} & \textbf{0.819} & \textbf{0.832} \\
+\bottomrule
+\end{tabular}
+\caption{Tamadhi: from the first Jaccard checker to the final one.}
+\label{tab:tam-p1-steps}
+\end{table}
+
+\paragraph{Name removal and evidence unit:} 48 settings were tried: two tokenisers, name kept or removed, three evidence units, IDF weighting on or off, and max or top-2 aggregation. Table~\ref{tab:tam-p1-unit} gives the best result for each unit. Removing the name helps every unit except, under cross-validation, the whole passage. Windows are clearly the best unit, with or without the name. A whole passage has a few hundred tokens, so even a supported fact gets a Jaccard of about $0.03$. A sentence is better, but a long Wikipedia sentence still dilutes a 3--6 token fact.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+& \multicolumn{2}{c}{Name kept} & \multicolumn{2}{c}{Name removed} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Unit & Accuracy & CV & Accuracy & CV \\
+\midrule
+Whole passage & 0.719 & 0.696 & 0.729 & 0.683 \\
+Sentence      & 0.692 & 0.660 & 0.742 & 0.715 \\
+Window (8 tokens) & 0.783 & 0.751 & \textbf{0.814} & \textbf{0.796} \\
+\bottomrule
+\end{tabular}
+\caption{Tamadhi: best setting for each evidence unit, with and without the subject's name.}
+\label{tab:tam-p1-unit}
+\end{table}
+
+\paragraph{Window size:} With the other settings fixed, windows of 8 to 12 tokens all score at least 0.810 (Figure~\ref{fig:tam-p1-win}). Shorter windows cut a supporting span in two, and longer ones start to dilute it again. 12 tokens with stride 6 is best on accuracy, CV and grouped CV. Dion's ROUGE-1 recall in Section~\ref{sec:p1dion} also uses windows (8 tokens), which supports the same idea.
+
+\begin{figure}[H]
+\centering
+\safefig{0.8\linewidth}{figures/tamadhi_p1_window.png}
+\caption{Tamadhi: accuracy and 5-fold CV against window size (NLTK tokeniser, stop words removed, stemming, name removed, unweighted, top-2). Grouped CV is 0.771, 0.799, 0.804, 0.810, \textbf{0.820}, 0.769 and 0.717 for the same sizes.}
+\label{fig:tam-p1-win}
+\end{figure}
+
+\paragraph{One change at a time:} Table~\ref{tab:tam-p1-ablation} starts from the final setting and changes one choice per row, retuning $\theta$ each time. The evidence unit and stop-word removal matter most (about 30 facts each), then name removal (13 facts). IDF weighting lowers accuracy by 10 facts. This differs from IDF-recall in Section~\ref{sec:p1rumaiz}, where IDF helps. A likely reason is that weighted Jaccard also weights the union, so a rare word in the window that is not in the fact pulls the score down strongly.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lcccccc}
+\toprule
+Setting & $\theta$ & Correct & Accuracy & CV & Grouped & F1 (S) \\
+\midrule
+\textbf{Final} & \textbf{0.081} & \textbf{181/221} & \textbf{0.819} & \textbf{0.819} & \textbf{0.820} & \textbf{0.832} \\
+Regex tokeniser & 0.077 & 175/221 & 0.792 & 0.792 & 0.786 & 0.813 \\
+No stemming & 0.081 & 174/221 & 0.787 & 0.778 & 0.780 & 0.793 \\
+IDF weighting on & 0.067 & 171/221 & 0.774 & 0.742 & 0.734 & 0.800 \\
+Name kept & 0.130 & 168/221 & 0.760 & 0.724 & 0.712 & 0.792 \\
+Sentence instead of window & 0.032 & 154/221 & 0.697 & 0.696 & 0.654 & 0.722 \\
+No stop-word removal & 0.166 & 151/221 & 0.683 & 0.642 & 0.625 & 0.693 \\
+Whole passage instead of window & 0.020 & 150/221 & 0.679 & 0.642 & 0.630 & 0.654 \\
+\bottomrule
+\end{tabular}
+\caption{Tamadhi: the final Jaccard setting with one choice changed per row. ``Grouped'' holds out whole biographies.}
+\label{tab:tam-p1-ablation}
+\end{table}
+
+\paragraph{Final result:} The final checker scores 181/221 (81.9\%) at $\theta = 0.081$, above the 75\% target. Cross-validation gives $0.819 \pm 0.033$ and holding out whole biographies gives $0.820 \pm 0.040$. Both match the full-set accuracy, so the result does not depend on tuning $\theta$ on all 221 facts. The peak itself is narrow: the best plateau is $[0.081, 0.083]$, and accuracy stays at or above 75\% only for $\theta \in [0.072, 0.087]$ (Figure~\ref{fig:tam-p1}). Jaccard scores are small and close together, mostly between 0 and 0.3, so a small change in $\theta$ moves many facts. This is the main weakness compared with IDF-recall, which stays above 85\% for $\theta \in [0.43, 0.53]$.
+
+\begin{figure}[H]
+\centering
+\safefig{\linewidth}{figures/jaccard_v2.png}
+\caption{Tamadhi: left, accuracy against threshold for the final Jaccard checker and the first version; right, score distribution of the final checker by gold label.}
+\label{fig:tam-p1}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+Class & Precision & Recall & F1 \\
+\midrule
+S  & 0.786 & 0.884 & 0.832 \\
+NS & 0.863 & 0.752 & 0.804 \\
+\bottomrule
+\end{tabular}
+\caption{Tamadhi: final Jaccard checker ($\theta = 0.081$): accuracy 181/221 = \textbf{81.9\%} (TP 99, FN 13, FP 27, TN 82).}
+\label{tab:tam-p1-final}
+\end{table}
+
+\paragraph{Where it goes wrong:} Compared with the first notebook's 155/221 result, false positives fall from 44 to 27 and false negatives from 22 to 13. Most remaining false positives share the content words but differ in a detail. ``The Fischer Research Laboratory was founded in 1936'' scores 0.275 although the page gives 1931. ``With CSKA, he won three Russian Premier League titles'' scores 0.258 although the passages do not support the number. ``He has worked at Mayo Clinic'' scores 0.240 because the page says he studied there. Four unsupported facts about Salazar and the Peru national team (caps, goals, dates) pass for the same reason. Four false negatives score exactly 0. In two of them the fact and the page use different words: \textit{Argentinian} against \textit{Argentine}, and \textit{United Kingdom} against \textit{London}. In ``They divorced in 1964'' the divorce is not in the retrieved passages at all. Name removal also has a cost: the fact ``Jonathan Haagensenis an actor'' contains a typo, so the joined token \textit{haagensenis} is not removed as part of the name and matches nothing. Jaccard cannot check years, numbers or relations, so these errors remain for the entailment model in Part~2.
 
 % ---------------------------------------------------------------------
 \subsection{ROUGE-1 recall (Dion)}
@@ -834,6 +954,127 @@ Refitting the cut in 5 folds (seed 42), with the gate held at $0.05$, gives $0.8
 This checker is not the one in \texttt{factcheck.py}. The window model scores 191/221. One reason for the gap is a pronoun sentence: the evidence can read ``He was born\ldots'' while the person's name is only in the sentence before, and this checker never joins the two.
 
 % ---------------------------------------------------------------------
+\subsection{Jaccard ranking and Jaccard pruning (Tamadhi)}
+\label{sec:p2tamadhi}
+This checker reuses the Part~1 Jaccard score (Section~\ref{sec:p1tamadhi}) in two places. First, it ranks the sentences of a fact so that only the top $K$ are sent to the model. Second, it prunes a fact before any model call when its overlap is below $\tau$. Premises are built the same way as in Section~\ref{sec:p2rumaiz}: passages are split on \texttt{<s>} markers and sentence punctuation, pieces with fewer than three words are dropped, and a window premise is the previous sentence plus the current one. Both single sentences and windows were run through the model once (944\,s for both on CPU) and cached. $K$, the decision rule and $\tau$ were then tuned from the cache.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{L{3.0cm} L{4.6cm} Y}
+\toprule
+Step & Choice & Reason \\
+\midrule
+Jaccard tokens & Lowercase, strip tags and punctuation, short stop list (negations kept), Porter stem & Same idea as Part~1, so \textit{not} still counts. \\
+Ranking & Jaccard of the fact with each single sentence & Decides which $K$ premises reach the model. \\
+Premise & Sentence or two-sentence window & The window gives a pronoun its referent. \\
+Rules tested & max $P(E)$, mean of top-2 $P(E)$, max $[P(E)-P(C)]$ & One supporting premise should be enough. \\
+$K$ tested & 1, 3, 5, 8, 20 and all sentences & Fewer premises means fewer model calls. \\
+Pruning signal & Whole-passage Jaccard, or best single-sentence Jaccard & Both tried (Table~\ref{tab:tam-prune}). \\
+\bottomrule
+\end{tabularx}
+\caption{Tamadhi: settings of the Jaccard-based entailment checker.}
+\label{tab:tam-setup}
+\end{table}
+
+\paragraph{Check against the shared pipeline:} With window premises, max $P(E)$, every sentence and no pruning, this notebook scores 186/221 (0.842) at $\theta = 0.314$, and the best plateau is $[0.314, 0.336]$. Both numbers are exactly the no-pruning window row in Table~\ref{tab:strategies} and the plateau used for the final model. The two notebooks were written separately, so this confirms that the premises and the cached probabilities are the same.
+
+\paragraph{Ranking by Jaccard (top-$K$):} Of the 24 settings in the grid (two premise types, $K \in \{1,3,5,8\}$, three rules), the best was window premises, $K = 5$, max $P(E)$. Allowing more sentences still helps (Table~\ref{tab:tam-k}). With $K = 5$ the model sees at most $5 \times 221 = 1{,}105$ pairs, about a fifth of all pairs, and accuracy drops by 2.3 points. The ranking uses the Jaccard of the single sentence, so a sentence such as ``\emph{He} was born in \dots'' ranks low even when it is the evidence. This is the same effect that made sentence-level pruning worse in Section~\ref{sec:p2rumaiz}.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+Premises sent to the model & Pairs (upper bound) & $\theta$ & Accuracy \\
+\midrule
+Top 5 by Jaccard  & 1{,}105 & 0.225 & 0.819 \\
+Top 20 by Jaccard & 4{,}420 & 0.225 & 0.824 \\
+\textbf{All sentences} & all & \textbf{0.314} & \textbf{0.842} \\
+\bottomrule
+\end{tabular}
+\caption{Tamadhi: effect of keeping only the top-$K$ Jaccard sentences (window premises, max $P(E)$, no pruning).}
+\label{tab:tam-k}
+\end{table}
+
+\paragraph{Pruning signal:} Table~\ref{tab:tam-prune} compares the two signals. Whole-passage Jaccard is diluted, because the union with a passage of a few hundred tokens is large, so even supported facts score only around $0.03$. That value was the Part~1 Jaccard threshold, so at $\tau = 0.03$ pruning becomes the weak Part~1 classifier and removes 24 supported facts. The best single-sentence Jaccard is much safer: up to $\tau = 0.06$ it prunes 14 facts and loses only one supported fact. Above $\tau = 0.08$ supported facts start to be lost and accuracy falls. At large $\tau$ almost every fact is pruned, so the tuned $\theta$ values in that range (0.990, 0.001) mean nothing.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}ccccc@{\hspace{8mm}}ccccc@{}}
+\toprule
+\multicolumn{5}{c}{Whole-passage Jaccard ($K=5$)} & \multicolumn{5}{c}{Best-sentence Jaccard (all sentences)} \\
+\cmidrule(r{8mm}){1-5}\cmidrule{6-10}
+$\tau$ & Pruned & S lost & Skipped & Acc & $\tau$ & Pruned & S lost & Skipped & Acc \\
+\midrule
+0.00 & 0   & 0   & 0.0\%  & 0.819 & 0.00 & 0   & 0  & 0.0\%  & 0.842 \\
+0.01 & 13  & 1   & 4.3\%  & 0.819 & 0.02 & 10  & 1  & 2.7\%  & 0.842 \\
+0.02 & 39  & 2   & 12.6\% & \textbf{0.824} & \textbf{0.06} & \textbf{14} & \textbf{1} & \textbf{4.9\%} & \textbf{0.842} \\
+0.03 & 89  & 24  & 37.4\% & 0.801 & 0.08 & 25  & 4  & 8.4\%  & 0.837 \\
+0.04 & 147 & 61  & 62.6\% & 0.670 & 0.10 & 42  & 10 & 15.2\% & 0.828 \\
+0.05 & 167 & 76  & 72.3\% & 0.615 & 0.12 & 58  & 17 & 21.4\% & 0.801 \\
+0.07 & 204 & 102 & 90.8\% & 0.525 & 0.15 & 99  & 34 & 39.0\% & 0.760 \\
+0.10 & 217 & 110 & 98.2\% & 0.498 & 0.20 & 139 & 55 & 58.2\% & 0.715 \\
+\bottomrule
+\end{tabular}
+\caption{Tamadhi: fact-level pruning with two Jaccard signals (window premises, max $P(E)$, $\theta$ retuned for each row). ``Skipped'' is the share of all premise--fact pairs belonging to pruned facts.}
+\label{tab:tam-prune}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\safefig{0.85\linewidth}{figures/tamadhi_pruning.png}
+\caption{Tamadhi: fact-level pruning with the two Jaccard signals.}
+\label{fig:tam-prune}
+\end{figure}
+
+\paragraph{Why Jaccard pruning does not raise accuracy:} Pruning with IDF-recall raises accuracy from 0.842 to 0.864 (Table~\ref{tab:pruning}), and the BM25 gate removes 7 false supports (Section~\ref{sec:p2shavindu}). Jaccard pruning never goes above the no-pruning score. Both of the other scores delete the subject's name and weight rare words more. Jaccard keeps the name and gives every token the same weight. A fact such as ``Kerser is a songwriter'' therefore still shares \textit{kerser} with many sentences and is never pruned, even though nothing about songwriting is in the passage. The 14 facts pruned at $\tau = 0.06$ had already been rejected by the model, so the confusion matrix is unchanged from no pruning (TP 96, FN 16, FP 19, TN 90). This matches the no-pruning model in Section~\ref{sec:p2final}: from its 191/221, adding back the 7 removed false positives and the 2 added false negatives gives the same counts.
+
+\paragraph{Final setting:} The kept setting is window premises, all sentences, max $P(E)$, best-sentence Jaccard pruning at $\tau = 0.06$ and $\theta = 0.314$. It gets 186/221 (84.2\%), above the 83\% target, while skipping 4.9\% of model calls. Accuracy stays at or above 83\% for $\theta \in [0.199, 0.444]$. This range is narrower than the final model's range because low-overlap unsupported facts are not removed, so they are accepted as soon as $\theta$ is lowered. The prediction flow is the same as the final checker's (Figure~\ref{fig:p2flow}), except that the gate is the best single-sentence Jaccard and the cut is $\theta = 0.314$. In 5-fold cross-validation (seed 42) the mean is $0.828 \pm 0.019$ (Table~\ref{tab:tam-cv}). Folds 2 and 4 pick a lower $\theta$ (0.199 and 0.225) and score less on their held-out fold, the same pattern as in Section~\ref{sec:p2shavindu}.
+
+\begin{table}[H]
+\centering
+\begin{minipage}[c]{0.44\linewidth}
+\centering
+\small
+\begin{tabular}{ccc}
+\toprule
+Fold & $\theta$ & Held-out acc \\
+\midrule
+1 & 0.314 & 0.844 \\
+2 & 0.199 & 0.818 \\
+3 & 0.314 & 0.841 \\
+4 & 0.225 & 0.795 \\
+5 & 0.314 & 0.841 \\
+\midrule
+Mean & & $0.828 \pm 0.019$ \\
+\bottomrule
+\end{tabular}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.52\linewidth}
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+Class & Precision & Recall & F1 \\
+\midrule
+S  & 0.835 & 0.857 & 0.846 \\
+NS & 0.849 & 0.826 & 0.837 \\
+\midrule
+\multicolumn{4}{l}{TP 96, FN 16, FP 19, TN 90} \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\caption{Tamadhi: 5-fold cross-validation (left) and per-class results at $\tau = 0.06$, $\theta = 0.314$ (right).}
+\label{tab:tam-cv}
+\end{table}
+
+\paragraph{Remaining errors:} Most of the 19 false positives are the same kind as those analysed in Part~3: topical overlap without the claimed relation (``Trivisonno worked at WKNR'', ``He has worked at Mayo Clinic'') and vague claims (``He has worked as a researcher at various organizations''). This is expected, since the model and premises are the same. The extra false positives are short facts whose only overlap is the name, such as ``Kerser is a songwriter'', ``Marianne McAndrew is a singer'' and ``Bertotti is a talented performer''. None of them is among the false positives examined in Part~3, which points to name removal in the pruning score as the change that fixes them. The false negatives are the same list and bibliography cases (the Katsu novels, ``With CSKA, he won domestic titles'') and the \textit{Fischer}/\textit{Fisher} spelling.
+
+\paragraph{Summary:} Jaccard is useful as a safe filter: at $\tau \le 0.06$ it removes a few hopeless facts without losing accuracy. It is not useful for ranking premises or for removing false positives, because it does not remove the subject's name or weight rare words. For this reason the final checker uses the IDF-recall score for pruning (Section~\ref{sec:p2final}).
+
+% ---------------------------------------------------------------------
 \subsection{Comparison and final model}
 \label{sec:p2final}
 
@@ -845,6 +1086,7 @@ Approach & Member & Accuracy \\
 \midrule
 Sentence, pair and passage, max $P(E)$ & Dion & 0.842 \\
 BM25 gate $0.05$, sentence max $P(E)$ & Shavindu & 0.842 \\
+Window premises, max $P(E)$, Jaccard pruning $\tau=0.06$ & Tamadhi & 0.842 \\
 \textbf{Window premises, max $P(E)$, pruning $\tau=0.1$} & Rumaiz & \textbf{0.864} \\
 \bottomrule
 \end{tabular}
