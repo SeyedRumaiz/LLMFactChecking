@@ -1,0 +1,222 @@
+idx,topic,fact,gold,raw,score,pred
+0,Marianne McAndrew,Marianne McAndrew is an American.,NS,NS,0.3845,S
+1,Marianne McAndrew,Marianne McAndrew is an actress.,S,S,0.5633,S
+2,Marianne McAndrew,Marianne McAndrew is a singer.,NS,NS,0.0,NS
+3,Marianne McAndrew,"Marianne McAndrew was born on November 21, 1942.",NS,NS,0.0,NS
+4,Marianne McAndrew,Marianne McAndrew was born in Cleveland.,NS,NS,0.0,NS
+5,Marianne McAndrew,Cleveland is in Ohio.,NS,IR,0.4706,S
+6,Gerhard Fischer (inventor),Gerhard Fischer is an inventor.,S,S,0.5063,S
+7,Gerhard Fischer (inventor),Gerhard Fischer is an entrepreneur.,S,S,0.5063,S
+8,Gerhard Fischer (inventor),Gerhard Fischer is best known for inventing a metal detector.,S,S,0.3454,S
+9,Gerhard Fischer (inventor),"Gerhard Fischer invented the first handheld, battery-operated metal detector.",S,S,0.2088,S
+10,Gerhard Fischer (inventor),"Gerhard Fischer invented the first handheld, battery-operated metal detector in 1931.",NS,NS,0.1849,NS
+11,Gerhard Fischer (inventor),He founded the Fischer Research Laboratory.,S,S,0.4878,S
+12,Gerhard Fischer (inventor),The Fischer Research Laboratory was founded in 1936.,NS,NS,0.3568,S
+13,Gerhard Fischer (inventor),The Fischer Research Laboratory became one of the world's leading manufacturers of metal detectors.,NS,NS,0.2864,S
+14,Joey D. Vieira,Joey D. Vieira is an American.,S,S,0.4706,S
+15,Joey D. Vieira,Joey D. Vieira is an actor.,S,S,0.4706,S
+16,Joey D. Vieira,Joey D. Vieira is a stunt performer.,NS,NS,0.0,NS
+17,Joey D. Vieira,"Joey D. Vieira was born on July 23, 1937.",NS,NS,0.0773,NS
+18,Joey D. Vieira,"Joey D. Vieira was born in California, USA.",NS,NS,0.0813,NS
+19,Taral Hicks,She transitioned to acting.,NS,NS,0.1475,NS
+20,Taral Hicks,She appeared in films.,S,S,0.4819,S
+21,Taral Hicks,She appeared in A Bronx Tale.,S,S,0.3977,S
+22,Taral Hicks,A Bronx Tale is a film.,S,S,0.4788,S
+23,Taral Hicks,A Bronx Tale was released in 1993.,S,S,0.4123,S
+24,Taral Hicks,She appeared in Just Cause.,S,S,0.2646,S
+25,Taral Hicks,Just Cause is a film.,S,S,0.4123,S
+26,Taral Hicks,Just Cause was released in 1995.,S,S,0.3262,S
+27,Taral Hicks,She appeared in Belly.,S,S,0.5,S
+28,Taral Hicks,Belly is a film.,S,S,0.4347,S
+29,Taral Hicks,Belly was released in 1998.,S,S,0.4232,S
+30,Vincenzo Tusa,He is a member of the Democratic Party.,NS,NS,0.1159,NS
+31,Vincenzo Tusa,He has served as a mayor.,NS,NS,0.0,NS
+32,Vincenzo Tusa,He is the mayor of Palermo.,NS,IR,0.2496,S
+33,Vincenzo Tusa,He has been mayor of Palermo since June 2017.,NS,IR,0.151,NS
+34,Vincenzo Tusa,Tusa has been involved in various cultural initiatives.,NS,NS,0.0,NS
+35,Vincenzo Tusa,Tusa has worked to promote Palermo as a cultural destination.,NS,IR,0.1297,NS
+36,Jean Daullé,Jean Daullé was born in 1703.,S,S,0.356,S
+37,Jean Daullé,Jean Daullé died in 1763.,S,S,0.3252,S
+38,Jean Daullé,Jean Daullé was French.,S,S,0.4545,S
+39,Jean Daullé,Jean Daullé was an engraver.,S,S,0.5,S
+40,Jean Daullé,Jean Daullé was a printmaker.,NS,NS,0.0,NS
+41,Jean Daullé,Jean Daullé was known for his portraits.,S,S,0.3587,S
+42,Jean Daullé,Jean Daullé was known for his religious subjects.,NS,NS,0.191,NS
+43,"Fernando (footballer, born 1984)",Fernandinho represents the Brazil national team.,NS,NS,0.0543,NS
+44,"Fernando (footballer, born 1984)",Fernandinho has represented the Brazil national team since 2011.,NS,IR,0.0437,NS
+45,"Fernando (footballer, born 1984)",Fernandinho has earned over 50 caps.,NS,IR,0.0,NS
+46,"Fernando (footballer, born 1984)",Fernandinho participated in the 2014 FIFA World Cup.,NS,IR,0.0,NS
+47,"Fernando (footballer, born 1984)",Fernandinho participated in the 2018 FIFA World Cup.,NS,IR,0.0,NS
+48,Ko Itakura,He moved to Dutch club FC Groningen.,S,S,0.2025,S
+49,Ko Itakura,He made the move in 2019.,S,S,0.3436,S
+50,Ko Itakura,He has become a regular starter in the team's defense.,NS,NS,0.1809,NS
+51,Ko Itakura,Itakura has represented Japan at the Under-19-level.,NS,NS,0.1374,NS
+52,Ko Itakura,Itakura has represented Japan at the Under-23 level.,NS,NS,0.1331,NS
+53,Ko Itakura,Itakura made his senior debut for the national team in 2019.,S,S,0.3657,S
+54,Thomas Houghton (rugby league),"He was born on December 5, 1999.",NS,NS,0.0984,NS
+55,Thomas Houghton (rugby league),He was born in Hull.,NS,NS,0.1095,NS
+56,Thomas Houghton (rugby league),Hull is in England.,NS,NS,0.1632,NS
+57,Thomas Houghton (rugby league),Houghton has established himself as one of the top hookers in the Super League.,NS,NS,0.0743,NS
+58,Thomas Houghton (rugby league),He was named Hull FC's player of the year.,NS,NS,0.0304,NS
+59,Thomas Houghton (rugby league),He was named player of the year in 2018.,NS,NS,0.0706,NS
+60,Mike Trivisonno,Mike Trivisonno is a radio personality.,S,S,0.4651,S
+61,Mike Trivisonno,Mike Trivisonno is well-known.,S,S,0.2495,S
+62,Mike Trivisonno,Mike Trivisonno is from Cleveland.,S,S,0.5,S
+63,Mike Trivisonno,Cleveland is in Ohio.,S,S,0.4706,S
+64,Mike Trivisonno,Trivisonno started his radio career at WIXY 1260 AM.,NS,NS,0.0972,NS
+65,Mike Trivisonno,Trivisonno worked at WMMS.,NS,NS,0.0721,NS
+66,Mike Trivisonno,Trivisonno worked at WTAM.,S,S,0.3763,S
+67,Mike Trivisonno,Trivisonno worked at WKNR.,NS,NS,0.3908,S
+68,John Estes,Estes is the grandson of Sleepy John Estes.,NS,NS,0.0,NS
+69,John Estes,Sleepy John Estes is a blues musician.,NS,IR,0.0,NS
+70,John Estes,Sleepy John Estes is legendary.,NS,IR,0.0,NS
+71,John Estes,Estes learned to play guitar from his grandfather.,NS,NS,0.0962,NS
+72,John Estes,He currently resides in Nashville.,NS,NS,0.0,NS
+73,John Estes,Nashville is in Tennessee.,NS,IR,0.0,NS
+74,John Estes,He continues to tour.,NS,NS,0.0,NS
+75,John Estes,He continues to record new music.,NS,NS,0.1056,NS
+76,Alma Katsu,Katsu has written novels.,S,S,0.328,S
+77,Alma Katsu,The Taker trilogy is a novel by Katsu.,S,S,0.3805,S
+78,Alma Katsu,The Hunger is a novel by Katsu.,S,S,0.2934,S
+79,Alma Katsu,The Deep is a novel by Katsu.,S,S,0.5186,S
+80,Alma Katsu,Red Widow is a novel by Katsu.,S,S,0.318,S
+81,Alma Katsu,Katsu currently lives in Virginia.,NS,NS,0.0907,NS
+82,Alma Katsu,Katsu lives with her husband.,S,S,0.4762,S
+83,"Rennie Fritchie, Baroness Fritchie",Rennie Fritchie is a public servant.,S,S,0.1253,NS
+84,"Rennie Fritchie, Baroness Fritchie",Rennie Fritchie is British.,S,S,0.4597,S
+85,"Rennie Fritchie, Baroness Fritchie",Rennie Fritchie is a Baroness.,S,S,0.633,S
+86,"Rennie Fritchie, Baroness Fritchie",Rennie Fritchie is Baroness Fritchie.,S,S,0.6661,S
+87,"Rennie Fritchie, Baroness Fritchie",Rennie Fritchie is a crossbench member of the House of Lords.,S,S,0.3742,S
+88,Manuel Salazar (footballer),He had a brief stint with Universitario de Deportes.,NS,NS,0.0,NS
+89,Manuel Salazar (footballer),His stint with Universitario de Deportes was in 2003.,NS,NS,0.0,NS
+90,Manuel Salazar (footballer),He then moved to Mexico.,NS,NS,0.0,NS
+91,Manuel Salazar (footballer),He went to Mexico to play for Club Necaxa.,NS,NS,0.0645,NS
+92,Manuel Salazar (footballer),Salazar played for the Peru national team from 1995.,NS,NS,0.1486,NS
+93,Manuel Salazar (footballer),Salazar left the Peru national team in 2003.,NS,IR,0.1403,NS
+94,Manuel Salazar (footballer),Salazar earned 28 caps for the Peru national team.,NS,IR,0.1663,NS
+95,Manuel Salazar (footballer),Salazar scored six goals for the Peru national team.,NS,NS,0.1247,NS
+96,Malcolm Hedding,He grew up in a Christian household.,NS,NS,0.197,NS
+97,Malcolm Hedding,He became a Christian at a young age.,NS,NS,0.251,S
+98,Malcolm Hedding,He was a pastor in South Africa.,S,S,0.2407,S
+99,Malcolm Hedding,He served for many years as a pastor.,S,S,0.2281,S
+100,Malcolm Hedding,He served as the Executive Director of the International Christian Embassy Jerusalem.,S,S,0.3895,S
+101,Hibo Wardere,Hibo Wardere is a campaigner.,S,S,0.6015,S
+102,Hibo Wardere,Hibo Wardere is an author.,S,S,0.4444,S
+103,Hibo Wardere,Hibo Wardere is Somali-born.,S,S,0.4545,S
+104,Hibo Wardere,Hibo Wardere is based in the United Kingdom.,S,S,0.0,NS
+105,Hibo Wardere,She has worked with a number of organizations.,NS,NS,0.0974,NS
+106,Hibo Wardere,She has worked with the World Health Organization.,NS,NS,0.0685,NS
+107,Hibo Wardere,She has worked to educate communities about the dangers of FGM.,S,S,0.3309,S
+108,Hibo Wardere,She has worked to promote the elimination of FGM.,S,S,0.3053,S
+109,Nisar Ahmad Kakru,Nisar Ahmad Kakru was Kashmiri.,NS,NS,0.0,NS
+110,Nisar Ahmad Kakru,Nisar Ahmad Kakru was a prominent poet.,NS,NS,0.0,NS
+111,Nisar Ahmad Kakru,Nisar Ahmad Kakru was a prominent writer.,NS,NS,0.0,NS
+112,Nisar Ahmad Kakru,Nisar Ahmad Kakru was a prominent scholar.,NS,NS,0.0,NS
+113,Nisar Ahmad Kakru,His poems are known for their simplicity.,NS,NS,0.0,NS
+114,Nisar Ahmad Kakru,His poems are known for their clarity.,NS,NS,0.0,NS
+115,Nisar Ahmad Kakru,His poems are known for their use of everyday language.,NS,NS,0.0,NS
+116,Don Featherstone (artist),Don Featherstone was born in 1936.,S,S,0.4762,S
+117,Don Featherstone (artist),Don Featherstone died in 2015.,S,S,0.4651,S
+118,Don Featherstone (artist),Don Featherstone was an American.,S,S,0.404,S
+119,Don Featherstone (artist),Don Featherstone was an artist.,S,S,0.5755,S
+120,Don Featherstone (artist),Don Featherstone was a designer.,S,S,0.4301,S
+121,Don Featherstone (artist),Don Featherstone created the plastic pink flamingo lawn ornament.,S,S,0.2441,S
+122,Travis Oliphant,He has worked as a researcher at various organizations.,NS,NS,0.1462,NS
+123,Travis Oliphant,He has worked as a scientist at various organizations.,NS,NS,0.175,NS
+124,Travis Oliphant,Mayo Clinic is an organization.,NS,NS,0.3804,S
+125,Travis Oliphant,He has worked at Mayo Clinic.,NS,NS,0.4318,S
+126,Travis Oliphant,Google is an organization.,NS,NS,0.0,NS
+127,Travis Oliphant,He has worked at Google.,NS,NS,0.0,NS
+128,Travis Oliphant,Continuum Analytics is an organization.,S,S,0.3894,S
+129,Travis Oliphant,He has worked at Continuum Analytics.,S,S,0.4344,S
+130,Rob Furlong,Furlong joined the Canadian Armed Forces.,S,S,0.3234,S
+131,Rob Furlong,Furlong joined in 1995.,NS,NS,0.251,S
+132,Rob Furlong,He served in the Princess Patricia's Canadian Light Infantry.,S,S,0.476,S
+133,Rob Furlong,He served as a sniper.,NS,NS,0.3791,S
+134,Rob Furlong,Furlong left the military.,S,S,0.3033,S
+135,Rob Furlong,Furlong worked as a hunting guide.,NS,NS,0.0,NS
+136,Rob Furlong,Furlong has been involved in various veteran organizations.,NS,NS,0.0,NS
+137,Jessica Barboza,Jessica Barboza is Venezuelan.,S,S,0.3883,S
+138,Jessica Barboza,Jessica Barboza is a fashion model.,S,S,0.2187,S
+139,Jessica Barboza,Jessica Barboza is a beauty queen.,S,S,0.2027,S
+140,Jessica Barboza,Jessica Barboza is a social media personality.,NS,NS,0.1256,NS
+141,Jessica Barboza,"She was born on July 18, 1987.",S,S,0.2063,S
+142,Jessica Barboza,She was born in Maracaibo.,S,S,0.3883,S
+143,Jessica Barboza,Maracaibo is in Venezuela.,S,S,0.5169,S
+144,Daniel Carvalho,"With CSKA, he won domestic titles.",S,S,0.279,S
+145,Daniel Carvalho,"With CSKA, he won international titles.",S,S,0.3294,S
+146,Daniel Carvalho,"With CSKA, he won three Russian Premier League titles.",NS,NS,0.2735,S
+147,Daniel Carvalho,"With CSKA, he won the UEFA Cup.",S,S,0.384,S
+148,Daniel Carvalho,He won the UEFA Cup in 2005.,S,S,0.4347,S
+149,Florencia Bertotti,Florencia Bertotti is an Argentinian.,S,S,0.0,NS
+150,Florencia Bertotti,Florencia Bertotti is an actress.,S,S,0.4255,S
+151,Florencia Bertotti,Florencia Bertotti is a singer.,S,S,0.4255,S
+152,Florencia Bertotti,Florencia Bertotti is a television host.,NS,NS,0.276,S
+153,Florencia Bertotti,Bertotti is a talented performer.,NS,NS,0.0,NS
+154,Florencia Bertotti,Bertotti is an accomplished performer.,NS,NS,0.0,NS
+155,Florencia Bertotti,Bertotti has made an impact on the entertainment industry in Argentina.,NS,NS,0.1109,NS
+156,Florencia Bertotti,Bertotti has made an impact on the entertainment industry beyond Argentina.,NS,NS,0.0897,NS
+157,Jonathan Haagensen,Jonathan Haagensen is a Brazilian.,S,S,0.4494,S
+158,Jonathan Haagensen,Jonathan Haagensenis an actor.,S,S,0.1081,NS
+159,Jonathan Haagensen,"Jonathan Haagensen was born on February 3, 1982.",NS,NS,0.1829,NS
+160,Jonathan Haagensen,Jonathan Haagensen was born in Rio de Janeiro.,S,S,0.1361,NS
+161,Jonathan Haagensen,Rio de Janeiro is in Brazil.,S,S,0.1232,NS
+162,Jonathan Haagensen,Haagensen began his acting career in theater.,S,S,0.0567,NS
+163,Jonathan Haagensen,Haagensen began his acting career when he was 15 years old.,NS,NS,0.1386,NS
+164,Jonathan Haagensen,Haagensen later transitioned to television.,S,S,0.0,NS
+165,Jonathan Haagensen,Haagensen later transitioned to film.,S,S,0.08,NS
+166,Kerser,Kerser is an Australian.,S,S,0.4938,S
+167,Kerser,Kerser is a rapper.,S,S,0.4444,S
+168,Kerser,Kerser is a songwriter.,NS,NS,0.0,NS
+169,Kerser,Kerser is from Sydney.,NS,NS,0.4301,S
+170,Kerser,Kerser's real name is Scott Barrow.,NS,NS,0.1469,NS
+171,Botak Chin,Botak Chin is also known as Chin Peng.,NS,NS,0.1069,NS
+172,Botak Chin,Botak Chin was a Malayan.,S,S,0.4347,S
+173,Botak Chin,Botak Chin was a communist.,NS,NS,0.0,NS
+174,Botak Chin,Botak Chin was a revolutionary.,NS,NS,0.0,NS
+175,Botak Chin,Botak Chin led the Communist Party of Malaya (CPM).,NS,NS,0.0494,NS
+176,Botak Chin,Botak Chin led the CPM in a guerrilla war.,NS,IR,0.0659,NS
+177,Botak Chin,Botak Chin led the CPM against the British colonial government.,NS,IR,0.0646,NS
+178,Botak Chin,Botak Chin led the CPM in the 1940s and 1950s.,NS,IR,0.0683,NS
+179,Owen Wright (surfer),He started surfing at a young age.,NS,NS,0.2582,S
+180,Owen Wright (surfer),He quickly developed a passion for the sport.,NS,NS,0.0898,NS
+181,Owen Wright (surfer),Owen is known for his powerful surfing style.,NS,NS,0.2305,S
+182,Owen Wright (surfer),Owen is known for his dynamic surfing style.,NS,NS,0.1879,NS
+183,Owen Wright (surfer),Owen is known for his ability to perform aerial maneuvers with ease.,NS,NS,0.0,NS
+184,Shahnaz Pahlavi,Shahnaz married Ardeshir Zahedi.,S,S,0.3849,S
+185,Shahnaz Pahlavi,Shahnaz married in 1959.,NS,NS,0.0966,NS
+186,Shahnaz Pahlavi,Ardeshir Zahedi served as Iran's foreign minister.,S,S,0.2153,S
+187,Shahnaz Pahlavi,Ardeshir Zahedi served as Iran's ambassador to the United States.,S,S,0.2112,S
+188,Shahnaz Pahlavi,They had three children together.,NS,NS,0.0,NS
+189,Shahnaz Pahlavi,They divorced in 1964.,S,S,0.0,NS
+190,Shahnaz Pahlavi,"She passed away on June 27, 2020.",NS,NS,0.0927,NS
+191,Shahnaz Pahlavi,She passed away at the age of 79.,NS,NS,0.0956,NS
+192,Jidenna,Jidenna's music is a fusion of hip-hop.,NS,NS,0.2385,S
+193,Jidenna,Jidenna's music is a fusion of R&B.,NS,NS,0.1938,NS
+194,Jidenna,Jidenna's music is a fusion of Afrobeat.,NS,NS,0.0622,NS
+195,Jidenna,He often incorporates African elements into his style.,S,S,0.0878,NS
+196,Jidenna,He often incorporates African elements into his fashion.,S,S,0.0869,NS
+197,Roselyn Sánchez,"She was born on April 2, 1973.",S,S,0.4081,S
+198,Roselyn Sánchez,She was born in San Juan.,S,S,0.4494,S
+199,Roselyn Sánchez,San Juan is in Puerto Rico.,S,S,0.4494,S
+200,Roselyn Sánchez,She has supported St. Jude Children's Research Hospital.,NS,NS,0.0602,NS
+201,Roselyn Sánchez,She has supported The National Alliance on Mental Illness.,NS,NS,0.0,NS
+202,Roselyn Sánchez,She has supported The National Foundation for Autism Research.,NS,NS,0.0,NS
+203,Ji Sung,Ji Sung is South Korean.,S,S,0.4444,S
+204,Ji Sung,Ji Sung is an actor.,S,S,0.4762,S
+205,Ji Sung,Ji Sung's real name is Kwak Tae Geun.,S,S,0.371,S
+206,Ji Sung,"Ji Sung was born on February 27, 1977.",S,S,0.4444,S
+207,Ji Sung,He has since then starred in numerous dramas.,S,S,0.2353,S
+208,Ji Sung,The dramas he has starred in have been popular.,S,S,0.3481,S
+209,Ji Sung,He has since then starred in numerous films.,S,S,0.1614,NS
+210,Ji Sung,The films he has starred in have been popular.,S,S,0.254,S
+211,Ji Sung,"He has since then starred in ""Save the Last Dance for Me."".",S,S,0.3623,S
+212,Ji Sung,"""Save the Last Dance for Me."" is popular.",S,S,0.3978,S
+213,Ji Sung,"He has since then starred in ""New Heart."".",S,S,0.3324,S
+214,Ji Sung,"""New Heart."" is popular.",S,S,0.2967,S
+215,Ji Sung,"He has since then starred in ""Protect the Boss."".",S,S,0.3206,S
+216,Ji Sung,"-""Protect the Boss."" is popular.",S,S,0.3572,S
+217,Ji Sung,"He has since then starred in ""Kill Me, Heal Me."".",S,S,0.3129,S
+218,Ji Sung,"""Kill Me, Heal Me."" is popular.",S,S,0.2892,S
+219,Ji Sung,"He has since then starred in ""Familiar Wife."".",S,S,0.3825,S
+220,Ji Sung,"""Familiar Wife."" is popular.",S,S,0.3553,S
