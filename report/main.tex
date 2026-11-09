@@ -510,7 +510,7 @@ BM25 (sentences, $k_1{=}1.2$, $b{=}0.25$) & Shavindu & 0.864 & 0.860 \\
 \label{tab:methods}
 \end{table}
 
-\noindent The final threshold is set to $\theta = 0.457$, which falls within a stable range where accuracy remains at or above 85\% for values between $0.43$ and $0.53$. In comparison, cosine similarity has a much narrower peak (Figure~\ref{fig:p1}).
+\noindent The final threshold is set to $\theta = 0.457$, the middle of the best range $[0.455, 0.459]$ (all 194/221). It also falls within a stable range where accuracy remains at or above 85\% for values between $0.43$ and $0.53$. In comparison, cosine similarity has a much narrower peak (Figure~\ref{fig:p1}).
 
 \begin{figure}[H]
 \centering
@@ -885,8 +885,8 @@ NS & 0.843 & 0.890 & 0.866 \\
 \toprule
 Setting & Accuracy & Prediction loop & Total & Peak memory \\
 \midrule
-No pruning ($\tau=0$) & 84.2\% & 232\,s & 263\,s & 1{,}604\,MB \\
-Pruning ($\tau=0.1$) & \textbf{86.4\%} & \textbf{183\,s} & \textbf{216\,s} & 1{,}313\,MB \\
+No pruning ($\tau=0$) & 84.2\% & 232\,s & 263\,s & 1{,}604\,MiB \\
+Pruning ($\tau=0.1$) & \textbf{86.4\%} & \textbf{183\,s} & \textbf{216\,s} & 1{,}313\,MiB \\
 \bottomrule
 \end{tabular}
 \caption{Measured effect of pruning (prediction loop excludes model loading).}
