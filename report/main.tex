@@ -499,8 +499,8 @@ The below table compares each member's best configuration. IDF-weighted recall w
 \toprule
 Method & Member & Accuracy & CV \\
 \midrule
-Jaccard (whole passage, stop+stem) & Tamadhi & 0.701 & -- \\
 TF-IDF cosine (sentence, stop+stem) & Rumaiz & 0.760 & -- \\
+Jaccard (12-token windows, name removed, stop+stem) & Tamadhi & 0.819 & 0.819 \\
 ROUGE-1 recall (8-token windows) & Dion & 0.828 & 0.805 \\
 BM25 (sentences, $k_1{=}1.2$, $b{=}0.25$) & Shavindu & 0.864 & 0.860 \\
 \textbf{IDF-recall + name removal + global IDF} & Rumaiz & \textbf{0.878} & \textbf{0.869} \\
