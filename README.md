@@ -23,7 +23,7 @@ Part 3 examines 10 false positives and 10 false negatives of the entailment mode
 |---|---|---|
 | Mohamed Razik Seyed Rumaiz | TF-IDF cosine and IDF-weighted recall (final Part 1 model) | Window premises, max P(E), IDF-recall pruning (final Part 2 model) and Part 3 error analysis |
 | Tamadhi Liyanage | Jaccard similarity with name removal and sliding windows | Jaccard ranking and Jaccard pruning |
-| Dion Rasmika | ROUGE-1 recall over 8-token windows | Sentence, pair and passage premises with a ROUGE-1 gate, plus a supplementary error analysis |
+| Dion Rasmika | ROUGE-1 recall over 8-token windows | Sentence, pair and passage premises with a ROUGE-1 gate |
 | Shavindu Kesara | Normalised BM25 | BM25 gate, then sentence entailment |
 
 ## Setup
